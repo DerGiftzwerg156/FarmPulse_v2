@@ -1,0 +1,11 @@
+[tools]
+lua = "5.4"
+
+[tasks.test]
+description = "Bridge Lua-Unit-Tests ausfuehren"
+dir = "Bridge"
+run = "lua tests/run_tests.lua"
+
+[tasks."mock-bridge"]
+description = "Bridge-Ausgabe simulieren, ohne dass FS25 laeuft"
+run = "./Tools/mock-bridge.sh"
