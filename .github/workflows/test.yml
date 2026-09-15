@@ -1,0 +1,25 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  bridge-tests:
+    name: Bridge Lua Unit-Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Lua 5.4 installieren
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.4
+
+      - name: Bridge-Tests ausfuehren
+        working-directory: Bridge
+        run: lua5.4 tests/run_tests.lua
