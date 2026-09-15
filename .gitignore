@@ -1,1 +1,34 @@
+# Ausgabe von Tools/mock-bridge.sh (lokale Testdaten, kein Projektinhalt)
 /mock-exchange/
+
+# JetBrains IDEs (siehe auch .idea/.gitignore fuer projektinterne Ausnahmen)
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Lua
+*.luac
+luacov.*.out
+luacov.report.out
+
+# Log-/Laufzeitdateien (z.B. lokal kopierte FS25-Logs zu Debugzwecken)
+*.log
+
+# Gepackte Mod-Archive (lokal erzeugt, siehe Bridge/README.md, Installation)
+*.zip
+
+# Temporaere/Backup-Dateien von Editoren
+*~
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Umgebungsspezifische/Secret-Dateien
+.env
+.env.*
