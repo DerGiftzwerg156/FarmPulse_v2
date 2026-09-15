@@ -64,6 +64,8 @@ unten fuer Details je Wert):
 5. **[FS25_Tardis](https://github.com/sperrgebiet/FS25_Tardis)** (sperrgebiet)
 6. **[FS25_UsedPlus](https://github.com/Seamforge/FS25_UsedPlus)** (Seamforge, nicht zu verwechseln mit der FS25 AI Coding Reference oben, die im selben Ursprungs-Repo von XelaNull liegt)
 7. **[FS25_UpgradableFactories](https://github.com/demortes/FS25_UpgradableFactories)** (demortes)
+8. **[FS25_LeaseToOwn](https://github.com/ColinM9991/FS25_LeaseToOwn)** (ColinM9991) - nach dem ersten Live-Test (siehe "Erster Live-Test" unten) als zusaetzliche Quelle fuer FarmID recherchiert
+9. **[FS25_LumberJack](https://github.com/loki79uk/FS25_LumberJack)** (loki79uk) - dito, belegt `g_localPlayer` als reales, aber gelegentlich `nil` werdendes Objekt
 
 | Wert | Verwendeter Ansatz | Status |
 |---|---|---|
@@ -72,7 +74,7 @@ unten fuer Details je Wert):
 | Monat | `g_currentMission.environment.currentMonth` (1-12) | **Bestaetigt** (Quelle 3, produktiv validiert) |
 | Jahr | `g_currentMission.environment.currentYear` | **Bestaetigt** (Quelle 3, produktiv validiert) |
 | Tage je Monat | `g_currentMission.environment.daysPerPeriod` | **Bestaetigt** (Quelle 2): direktes Feld, referenziert in `AbstractMission:setDefaultEndDate()` |
-| FarmID | `g_localPlayer.farmId`, Fallback `g_currentMission:getFarmId()` | **Bestaetigt** (Quelle 2, zusaetzlich gestuetzt durch Quelle 1): `AbstractMission:update()` prueft `g_localPlayer.farmId == self.farmId` direkt gegen ein echtes Feld. Unabhaengig davon zeigt `Player.md` in der Community-LUADOC (Quelle 1) in `Player.createServerInstance()` den Quellcode `self.farmId = farmId`, durchgaengig verwendet (u.a. `g_farmManager:getSpawnPoint(self.farmId)`) - dasselbe Feld auf derselben Klassenfamilie, unabhaengig bestaetigt. `getFarmId()` bleibt als unbestaetigter, aber in der Community weit verbreiteter Fallback |
+| FarmID | `g_farmManager:getFarmByUserId(mission.playerUserId).farmId`, Fallback `g_localPlayer.farmId`, Fallback `g_currentMission:getFarmId()` | **Strategie 1 bestaetigt** (Quelle 8, FS25_LeaseToOwn, echter veroeffentlichter Mod): ermittelt die Farm exakt so (`g_farmManager:getFarmByUserId(g_currentMission.playerUserId)` -> `.farmId`). Im **ersten Live-Test** (siehe "Erster Live-Test" unten) schlugen die beiden vorherigen Strategien (`g_localPlayer.farmId` bzw. `mission:getFarmId()`) durchgehend fehl - plausibelster Grund: `g_localPlayer` ist laut Quelle 9 (FS25_LumberJack, das deshalb selbst mit `if not g_localPlayer then ...` absichert) haeufig `nil`, u.a. waehrend der Spieler in einem Fahrzeug sitzt. Die neue Strategie 1 haengt nicht von der physischen Spielerfigur ab und sollte deshalb auch waehrend der Fahrzeugfahrt funktionieren. `g_localPlayer.farmId` (Strategie 2) bleibt als Fallback bestehen - der Feldname selbst ist ueber `Player.md` (Quelle 1, `Player.createServerInstance()`: `self.farmId = farmId`) bestaetigt, nur die Verfuegbarkeit von `g_localPlayer` nicht. `getFarmId()` (Strategie 3) bleibt unbestaetigter letzter Fallback |
 | Kontostand | `g_farmManager:getFarmById(farmId):getBalance()`, Fallback `g_currentMission:getMoney()` | **Bestaetigt** (Quelle 1): `Farm.md` zeigt die dokumentierte Methode `Farm:getBalance()` ("Get the current account balance of the farm", keine Argumente). Ein rohes `.money`-Feld ist NICHT dokumentiert und wird deshalb nicht mehr verwendet (Korrektur gegenueber einer fruehen Fassung dieser Bridge). `getFarmById()` selbst ist in `FarmManager.md` ("Get the farm object by given farmId") ebenfalls dokumentiert |
 | Feldliste | `g_farmlandManager:getFarmlands()`, je Eintrag `.id`/`.farmId`/`.areaInHa`/`.price` | **Bestaetigt** (Quelle 1): `FarmlandManager.md` zeigt `getFarmlands()` liefert `self.farmlands` (eine per Farmland-ID indizierte Tabelle - daher `pairs()` statt einer 1-indizierten Sequenz), und `Farmland.md` zeigt in `Farmland:load()` den Quellcode, der genau diese vier Felder setzt (Default-Besitzer `FarmlandManager.NO_OWNER_FARM_ID`, laut `getFarmlandOwner()`-Doku `0`) |
 | Jahreszeit (`season`) | reine Berechnung aus dem bereits bestaetigten Monatsfeld (1-12), **kein** zusaetzlicher Engine-Zugriff (siehe `WeatherCollector.seasonFromMonth`) | **Bestaetigt** (folgt direkt aus dem oben bestaetigten Monatsfeld - keine neue, unbestaetigte Engine-Abhaengigkeit noetig) |
@@ -101,14 +103,57 @@ Aufruf fehl, wird ein Platzhalterwert (`0`, `"unknown"` bzw. eine leere
 Liste) exportiert und eine Warnung in `log.txt` hinterlassen, statt dass die
 Bridge abstuerzt. Das Verhalten laesst sich also risikofrei ausprobieren.
 
-### Bekannte Luecken (Stand jetzt, vor dem ersten Live-Test)
+### Erster Live-Test (Ergebnis)
 
-- **Wetter** ist wie oben beschrieben die groesste Unsicherheit - beide
-  Strategien in `FarmPulseBridge.readWeather()` sind unbestaetigt. Sollte
-  `weather` im Live-Test dauerhaft `"unknown"` liefern, muessen die
-  Feldnamen anhand von `log.txt`-Warnungen und ggf. eines Daten-Dump-Mods
-  (siehe z.B. "Developer PowerTools" im Modhub) live im Spiel ermittelt
-  werden.
+Der erste tatsaechliche Testlauf im Spiel (siehe "Test-Feedback-Loop" unten)
+lieferte folgendes `log.txt`-Bild:
+
+- Aktivierung erfolgreich: `Aktiviert (ueber Mission00.update). Austauschordner: ...`
+- `hour`/`minute`/`day`/`month`/`year`/`daysPerMonth` (Kalender) und `money`
+  (Kontostand): **keine Warnung** - beide gelten damit als im laufenden Spiel
+  bestaetigt.
+- `farmId`: **beide** damals vorhandenen Strategien (`g_localPlayer.farmId`,
+  `mission:getFarmId()`) schlugen durchgehend fehl (`WARNUNG: Konnte FarmID
+  ueber keine bekannte API lesen - exportiere 0.`), ueber die gesamte
+  Spielsitzung hinweg, nicht nur beim allerersten Tick. Das spricht klar
+  gegen einen reinen Timing-Effekt (z.B. Aktivierung vor vollstaendigem
+  Login) und fuer eine strukturelle Erklaerung - siehe oben ("FarmID"-Zeile
+  der Tabelle) fuer die daraufhin recherchierte, neue Strategie 1
+  (`g_farmManager:getFarmByUserId(...)`) und ihre Begruendung
+  (`g_localPlayer` vermutlich `nil`, weil der Spieler im Fahrzeug sass).
+- `weather`: **beide** Strategien schlugen ebenfalls fehl (`WARNUNG: Konnte
+  Wetter ueber keine bekannte API lesen - exportiere 'unknown'.`) - erwartbar,
+  siehe "groesste verbleibende Unsicherheit" oben. Bleibt weiterhin ungeloest.
+- `world.json`/`farm.json` wurden nicht separat zurueckgemeldet - noch offen.
+
+Als direkte Konsequenz aus diesem Test:
+
+1. `FarmPulseBridge.readFarmId()` bekam die oben beschriebene neue Strategie 1.
+2. Beide `readFarmId()`/`readWeather()` loggen ihre `WARNUNG:` jetzt nur noch
+   **einmal pro Spielsitzung** (`logOnce()`), nicht mehr bei jedem Poll-Tick -
+   im ersten Test erschien dieselbe Zeile ueber die gesamte Sitzung hinweg
+   dutzendfach und haette echte Probleme im Log verschleiert.
+3. Schlaegt eine der beiden Funktionen weiterhin fehl, wird direkt danach
+   einmalig eine `DEBUG`-Zeile mit den tatsaechlich vorhandenen, thematisch
+   passenden Tabellenschluesseln geloggt (`logMatchingFieldNamesOnce()`,
+   z.B. alle Schluessel von `environment`, die `"weath"`/`"sky"`/`"rain"`/
+   `"cloud"`/`"forecast"` enthalten) - damit liefert der **naechste**
+   Live-Test direkt die richtigen Feldnamen, statt erneut blind raten zu
+   muessen bzw. einen separaten Daten-Dump-Mod zu benoetigen.
+
+### Bekannte Luecken (Stand nach dem ersten Live-Test)
+
+- **Wetter** bleibt die groesste Unsicherheit - beide Strategien in
+  `FarmPulseBridge.readWeather()` sind weiterhin unbestaetigt und im ersten
+  Live-Test nachweislich fehlgeschlagen (siehe "Erster Live-Test" oben). Die
+  neu hinzugekommene `DEBUG`-Diagnose sollte im naechsten Testlauf die
+  tatsaechlichen Feldnamen auf `environment` offenlegen; alternativ bleibt
+  ein Daten-Dump-Mod (siehe z.B. "Developer PowerTools" im Modhub) als
+  Rueckfalloption.
+- **FarmID** hat jetzt eine gegen einen echten Mod bestaetigte Strategie 1
+  (siehe oben) - sollte diese im naechsten Test ebenfalls fehlschlagen,
+  greift dieselbe neue `DEBUG`-Diagnose (Schluessel auf `mission` mit
+  `"farm"`/`"player"`/`"user"` im Namen).
 - **Lagerbestaende** decken bestaetigt nur Produktionspunkte ab (Fabriken,
   Verarbeitungsanlagen), noch nicht zwingend frei platzierte Hof-Silos. Falls
   `storages` im Live-Test dauerhaft leer bleibt oder erkennbar unvollstaendig

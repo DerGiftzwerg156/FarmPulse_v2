@@ -109,25 +109,91 @@ local function getMission()
     return FarmPulseBridge.mission or g_currentMission
 end
 
+--- Verhindert, dass dieselbe Warnung/Diagnose bei jedem Poll-Tick (alle 5s)
+-- erneut in log.txt landet - siehe erster Live-Test (Issue: FarmID/Wetter
+-- schlugen ueber Stunden hinweg fehl, dieselbe Zeile erschien dutzendfach).
+-- Der erste Fehlschlag wird vollstaendig protokolliert, jede Wiederholung
+-- waere nur Rauschen.
+local loggedOnceKeys = {}
+local function logOnce(key, message)
+    if loggedOnceKeys[key] then
+        return
+    end
+    loggedOnceKeys[key] = true
+    FarmPulseBridge.log(message)
+end
+
+--- Debug-Hilfsfunktion (nur beim ersten Fehlschlag, siehe logOnce): listet die
+-- Schluessel einer Tabelle, die einen der uebergebenen Suchbegriffe im Namen
+-- tragen, um bei fehlgeschlagenen Rateversuchen (z.B. Wetter) die
+-- tatsaechlichen Feldnamen ueber log.txt zu ermitteln, ohne einen
+-- Daten-Dump-Mod zu benoetigen.
+local function logMatchingFieldNamesOnce(onceKey, label, tbl, needles)
+    if loggedOnceKeys[onceKey] then
+        return
+    end
+    loggedOnceKeys[onceKey] = true
+
+    local ok, message = pcall(function()
+        local matches = {}
+        for key in pairs(tbl) do
+            if type(key) == "string" then
+                local lowerKey = key:lower()
+                for _, needle in ipairs(needles) do
+                    if lowerKey:find(needle, 1, true) then
+                        table.insert(matches, key)
+                        break
+                    end
+                end
+            end
+        end
+        table.sort(matches)
+        if #matches > 0 then
+            return label .. ": " .. table.concat(matches, ", ")
+        end
+        return label .. ": keine passenden Felder gefunden."
+    end)
+
+    FarmPulseBridge.log(ok and message or (label .. ": Tabelle nicht lesbar (pairs() fehlgeschlagen)."))
+end
+
 --- Liest die FarmID des aktuellen Spielers.
--- Strategie 1 ist gegen die offizielle GDN-Dokumentation bestaetigt (siehe
--- README.md): Der GIANTS-eigene Quellcode von AbstractMission:update() liest
--- dort direkt `g_localPlayer.farmId`, um zu pruefen, ob eine Mission zum
--- lokalen Spieler gehoert - ein bestaetigtes, offizielles Feld.
+-- Strategie 1 ist gegen einen echten, veroeffentlichten Mod bestaetigt (siehe
+-- README.md): FS25_LeaseToOwn ermittelt die Farm darueber, dass es die
+-- Spieler-UserID (mission.playerUserId, gesetzt ueber Player:createServerInstance,
+-- siehe README) an g_farmManager:getFarmByUserId() uebergibt und davon
+-- .farmId liest. Bewusst NEU an erster Stelle: robuster als
+-- g_localPlayer.farmId, weil unabhaengig davon, ob gerade eine
+-- Spielerfigur existiert (g_localPlayer ist z.B. waehrend der Spieler in
+-- einem Fahrzeug sitzt haeufig nil - siehe echte Mods wie FS25_LumberJack,
+-- die deshalb selbst mit "if not g_localPlayer then ..." absichern - was den
+-- ersten Live-Test-Fehlschlag dieser Bridge erklaert, siehe README).
 -- @return farmId (number), source (string, zu Debug-/Logzwecken)
 function FarmPulseBridge.readFarmId()
-    -- Strategie 1 (bestaetigt, siehe Funktionskommentar): g_localPlayer.farmId.
+    local mission = getMission()
+
+    -- Strategie 1 (bestaetigt, siehe Funktionskommentar):
+    -- g_farmManager:getFarmByUserId(mission.playerUserId).farmId.
     local ok, result = pcall(function()
+        local farm = g_farmManager:getFarmByUserId(mission.playerUserId)
+        return farm.farmId
+    end)
+    if ok and type(result) == "number" then
+        return result, "farmManager.getFarmByUserId(playerUserId).farmId"
+    end
+
+    -- Strategie 2 (bestaetigt gegen die Community-LUADOC, siehe README): das
+    -- Feld `self.farmId` wird in Player:createServerInstance() gesetzt -
+    -- schlaegt aber fehl, sobald g_localPlayer nil ist (siehe Funktionskommentar).
+    ok, result = pcall(function()
         return g_localPlayer.farmId
     end)
     if ok and type(result) == "number" then
         return result, "g_localPlayer.farmId"
     end
 
-    -- Strategie 2 (Fallback, unbestaetigt): aeltere, in vielen Community-Mods
-    -- verwendete getFarmId()-Methode auf der Mission, falls g_localPlayer aus
-    -- irgendeinem Grund nicht verfuegbar ist (z.B. vor vollstaendigem Login).
-    local mission = getMission()
+    -- Strategie 3 (Fallback, unbestaetigt): aeltere, in vielen Community-Mods
+    -- verwendete getFarmId()-Methode auf der Mission.
     ok, result = pcall(function()
         return mission:getFarmId()
     end)
@@ -135,7 +201,12 @@ function FarmPulseBridge.readFarmId()
         return result, "currentMission.getFarmId()"
     end
 
-    FarmPulseBridge.log("WARNUNG: Konnte FarmID ueber keine bekannte API lesen - exportiere 0.")
+    logOnce("farmIdWarned", "WARNUNG: Konnte FarmID ueber keine bekannte API lesen - exportiere 0.")
+    logOnce("farmIdDiagnose", "DEBUG FarmID-Diagnose: g_localPlayer=" .. tostring(g_localPlayer)
+        .. ", mission.playerUserId=" .. tostring(mission.playerUserId)
+        .. ", g_farmManager=" .. tostring(g_farmManager))
+    logMatchingFieldNamesOnce("farmIdFields", "DEBUG FarmID-Diagnose: mission-Felder mit 'farm'/'player'/'user'",
+        mission, { "farm", "player", "user" })
     return 0, "fallback-zero"
 end
 
@@ -294,7 +365,10 @@ function FarmPulseBridge.readWeather()
         return result, "environment.currentWeatherType"
     end
 
-    FarmPulseBridge.log("WARNUNG: Konnte Wetter ueber keine bekannte API lesen - exportiere 'unknown'.")
+    logOnce("weatherWarned", "WARNUNG: Konnte Wetter ueber keine bekannte API lesen - exportiere 'unknown'.")
+    logMatchingFieldNamesOnce("weatherFields",
+        "DEBUG Wetter-Diagnose: environment-Felder mit 'weath'/'sky'/'rain'/'cloud'/'forecast'",
+        mission.environment, { "weath", "sky", "rain", "cloud", "forecast" })
     return nil, "fallback-unknown"
 end
 
