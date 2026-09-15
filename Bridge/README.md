@@ -24,38 +24,42 @@ JSON-Parser in der Engine, `Mission00.update`-Hook fuer Aktivierung/Taktgeber)
 ist bereits aus einem vorherigen Testlauf bestaetigt (siehe Git-Historie des
 urspruenglichen Bridge-Prototyps).
 
-Die konkreten Engine-API-Aufrufe wurden gegen zwei Quellen abgeglichen:
+Die konkreten Engine-API-Aufrufe wurden gegen drei Quellen abgeglichen:
 
 1. Die **[FS25 Community LUADOC](https://github.com/umbraprior/FS25-Community-LUADOC)**,
    die Klassen/Methoden inkl. des tatsaechlichen dekompilierten Lua-Quellcodes
    direkt aus dem Spiel extrahiert, aber nur Klassen erfasst, deren Methoden
-   einem bestimmten Registrierungsmuster folgen.
+   einem bestimmten Registrierungsmuster folgen (eine eigene Seite fuer die
+   `Environment`-Klasse existiert dort trotz eines (veralteten/gebrochenen)
+   Verweises aus Quelle 3 nachweislich nicht - mehrfach gezielt gesucht).
 2. Die **offizielle [GDN-Dokumentation](https://gdn.giants-software.com/documentation_scripting_fs25.php)**
    (`gdn.giants-software.com`) selbst - aus dieser Entwicklungsumgebung heraus
    per Netzwerk-Policy nicht direkt erreichbar, aber die Seite fuer die Klasse
    `AbstractMission` (Category 59, ebenfalls mit echtem Quellcode) wurde
    manuell bereitgestellt und ausgewertet. Sie referenziert an mehreren
-   Stellen `g_currentMission.environment` und `g_localPlayer`, wodurch sich
-   einige der zuvor nur ueber die Community-LUADOC abgeglichenen Annahmen
-   zusaetzlich (bzw. erstmals) offiziell bestaetigen liessen:
+   Stellen `g_currentMission.environment` und `g_localPlayer`.
+3. Das **[FS25 AI Coding Reference](https://github.com/XelaNull/FS25_UsedPlus/tree/master/FS25_AI_Coding_Reference)**
+   von XelaNull/FS25_UsedPlus - explizit gegen eine tatsaechlich
+   veroeffentlichte Mod (UsedPlus, Version 2.6.0) validiert, mit
+   Datei-/Zeilenbelegen aus deren Quellcode (z.B. `CreditSystem.lua:223-227`).
 
 | Wert | Verwendeter Ansatz | Status |
 |---|---|---|
-| Stunde/Minute | `g_currentMission.environment.dayTime`, in Millisekunden seit Mitternacht, umgerechnet in Stunde/Minute | **Bestaetigt** (offizielle GDN-Doku): `AbstractMission:getMinutesLeft()` verrechnet `environment.dayTime` direkt mit `24*60*60*1000` |
-| Tag im Monat | `g_currentMission.environment:getDayInPeriodFromDay(environment.currentMonotonicDay)` | **Bestaetigt** (offizielle GDN-Doku): `AbstractMission:setDefaultEndDate()` berechnet den Tag-im-Monat exakt so - **kein** rohes Feld `currentDayInPeriod` (fruehere Annahme war falsch, siehe Korrektur unten) |
-| Monat | `g_currentMission.environment.currentPeriod` (1-12) | **Unbestaetigt** - kein Beleg in den bisher eingesehenen Quellen fuer ein direktes Feld |
-| Jahr | `g_currentMission.environment.currentYear` | **Unbestaetigt**, gleicher Stand |
-| Tage je Monat | `g_currentMission.environment.daysPerPeriod` | **Bestaetigt** (offizielle GDN-Doku): direktes Feld, referenziert in `AbstractMission:setDefaultEndDate()` |
-| FarmID | `g_localPlayer.farmId`, Fallback `g_currentMission:getFarmId()` | **Bestaetigt** (offizielle GDN-Doku): `AbstractMission:update()` prueft `g_localPlayer.farmId == self.farmId` direkt gegen ein echtes Feld. `getFarmId()` bleibt als unbestaetigter, aber in der Community weit verbreiteter Fallback |
-| Kontostand | `g_farmManager:getFarmById(farmId):getBalance()`, Fallback `g_currentMission:getMoney()` | **Bestaetigt** (Community-LUADOC): `Farm.md` zeigt die dokumentierte Methode `Farm:getBalance()`. Ein rohes `.money`-Feld ist NICHT dokumentiert und wird deshalb nicht mehr verwendet (Korrektur gegenueber einer fruehen Fassung dieser Bridge) |
-| Feldliste | `g_farmlandManager:getFarmlands()`, je Eintrag `.id`/`.farmId`/`.areaInHa`/`.price` | **Bestaetigt** (Community-LUADOC): `FarmlandManager.md` zeigt `getFarmlands()` liefert `self.farmlands` (eine per Farmland-ID indizierte Tabelle - daher `pairs()` statt einer 1-indizierten Sequenz), und `Farmland.md` zeigt in `Farmland:load()` den Quellcode, der genau diese vier Felder setzt (Default-Besitzer `FarmlandManager.NO_OWNER_FARM_ID`, laut `getFarmlandOwner()`-Doku `0`) |
+| Stunde/Minute | `g_currentMission.environment.dayTime`, in Millisekunden seit Mitternacht, umgerechnet in Stunde/Minute | **Bestaetigt** (Quelle 2): `AbstractMission:getMinutesLeft()` verrechnet `environment.dayTime` direkt mit `24*60*60*1000` |
+| Tag im Monat | `g_currentMission.environment:getDayInPeriodFromDay(environment.currentMonotonicDay)` | **Bestaetigt** (Quelle 2): `AbstractMission:setDefaultEndDate()` berechnet den Tag-im-Monat exakt so - **kein** rohes Feld `currentDayInPeriod` (fruehere Annahme war falsch, siehe Korrektur unten). Quelle 3 belegt zwar auch ein rohes Feld `environment.currentDay`, dessen Semantik (Tag-im-Monat vs. fortlaufender Tageszaehler wie `currentMonotonicDay`) aus dem eingesehenen Ausschnitt aber nicht eindeutig hervorgeht - deshalb bewusst weiter die von Quelle 2 eindeutig belegte Methode verwendet |
+| Monat | `g_currentMission.environment.currentMonth` (1-12) | **Bestaetigt** (Quelle 3, produktiv validiert) |
+| Jahr | `g_currentMission.environment.currentYear` | **Bestaetigt** (Quelle 3, produktiv validiert) |
+| Tage je Monat | `g_currentMission.environment.daysPerPeriod` | **Bestaetigt** (Quelle 2): direktes Feld, referenziert in `AbstractMission:setDefaultEndDate()` |
+| FarmID | `g_localPlayer.farmId`, Fallback `g_currentMission:getFarmId()` | **Bestaetigt** (Quelle 2): `AbstractMission:update()` prueft `g_localPlayer.farmId == self.farmId` direkt gegen ein echtes Feld. `getFarmId()` bleibt als unbestaetigter, aber in der Community weit verbreiteter Fallback |
+| Kontostand | `g_farmManager:getFarmById(farmId):getBalance()`, Fallback `g_currentMission:getMoney()` | **Bestaetigt** (Quelle 1): `Farm.md` zeigt die dokumentierte Methode `Farm:getBalance()`. Ein rohes `.money`-Feld ist NICHT dokumentiert und wird deshalb nicht mehr verwendet (Korrektur gegenueber einer fruehen Fassung dieser Bridge) |
+| Feldliste | `g_farmlandManager:getFarmlands()`, je Eintrag `.id`/`.farmId`/`.areaInHa`/`.price` | **Bestaetigt** (Quelle 1): `FarmlandManager.md` zeigt `getFarmlands()` liefert `self.farmlands` (eine per Farmland-ID indizierte Tabelle - daher `pairs()` statt einer 1-indizierten Sequenz), und `Farmland.md` zeigt in `Farmland:load()` den Quellcode, der genau diese vier Felder setzt (Default-Besitzer `FarmlandManager.NO_OWNER_FARM_ID`, laut `getFarmlandOwner()`-Doku `0`) |
 
-Offen bleiben also nur noch Monat (`currentPeriod`) und Jahr (`currentYear`) -
-fuer beide gibt es (Stand jetzt) keinen eingesehenen Beleg, weder als Feld
-noch als Methode. Die `Environment`-Klasse selbst wurde bisher nicht direkt
-in der GDN-Doku eingesehen (nur Referenzen darauf aus `AbstractMission`
-heraus) - eine gezielte Pruefung dieser Klassenseite wuerde die letzten
-beiden Luecken voraussichtlich schliessen.
+Damit sind mittlerweile alle exportierten Werte gegen mindestens eine
+Quelle mit echtem Engine-Quellcode (nicht nur Signaturlisten) abgeglichen.
+Ein Live-Test im Spiel bleibt trotzdem sinnvoll, insbesondere um die
+Feldsemantik von `currentDay` vs. `getDayInPeriodFromDay()` und das genaue
+Zusammenspiel von `currentMonth`/`currentYear`/`daysPerPeriod` ueber
+Periodenwechsel hinweg zu verifizieren.
 
 Jeder dieser Zugriffe ist trotzdem ueber `pcall()` abgesichert: Schlaegt ein
 Aufruf fehl, wird ein Platzhalterwert (0 bzw. eine leere `fields`-Liste)

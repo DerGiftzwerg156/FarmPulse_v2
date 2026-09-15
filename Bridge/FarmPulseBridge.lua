@@ -155,15 +155,19 @@ end
 -- sowie die konfigurierte Monatslaenge aus dem Environment-Objekt der laufenden
 -- Mission.
 --
--- Gegen die offizielle GDN-Dokumentation bestaetigt (siehe README.md, Klasse
--- AbstractMission): environment.dayTime ist in Millisekunden seit Mitternacht
--- (belegt durch die Verrechnung mit `24*60*60*1000` in
--- AbstractMission:getMinutesLeft()), environment.daysPerPeriod ist ein echtes
--- Feld (AbstractMission:setDefaultEndDate()), und der Tag-im-Monat wird NICHT
--- ueber ein rohes Feld, sondern ueber die Methode
--- environment:getDayInPeriodFromDay(currentMonotonicDay) berechnet (ebenfalls
--- setDefaultEndDate()) - environment.currentMonotonicDay ist dabei der
--- fortlaufende Tageszaehler seit Spielbeginn, kein Tag-im-Monat.
+-- Gegen zwei Quellen bestaetigt (siehe README.md):
+--   - Offizielle GDN-Dokumentation (Klasse AbstractMission): environment.dayTime
+--     ist in Millisekunden seit Mitternacht (Verrechnung mit `24*60*60*1000` in
+--     AbstractMission:getMinutesLeft()), environment.daysPerPeriod ist ein
+--     echtes Feld (AbstractMission:setDefaultEndDate()), und der Tag-im-Monat
+--     wird NICHT ueber ein rohes Feld, sondern ueber die Methode
+--     environment:getDayInPeriodFromDay(currentMonotonicDay) berechnet (ebenfalls
+--     setDefaultEndDate()) - environment.currentMonotonicDay ist dabei der
+--     fortlaufende Tageszaehler seit Spielbeginn, kein Tag-im-Monat.
+--   - FS25 AI Coding Reference (XelaNull/FS25_UsedPlus), gegen eine
+--     veroeffentlichte Mod (UsedPlus) validiert, mit Datei-/Zeilenbeleg
+--     (CreditSystem.lua:223-227): environment.currentMonth und
+--     environment.currentYear sind echte, direkte Felder.
 -- @return hour, minute, day, month, year, daysPerMonth (jeweils number, Rohwerte
 --         vor Normalisierung durch TelemetryCollector)
 function FarmPulseBridge.readCalendar()
@@ -187,11 +191,9 @@ function FarmPulseBridge.readCalendar()
         local currentMonotonicDay = environment.currentMonotonicDay or 0
         day = environment:getDayInPeriodFromDay(currentMonotonicDay) or 0
 
-        -- ANNAHME (weiterhin unbestaetigt): Feldnamen fuer Monat/Jahr. Die GDN-
-        -- Quelle zu AbstractMission zeigt zwar, dass "Period" das Monats-
-        -- Vokabular der Engine ist, belegt aber keine direkten Felder fuer den
-        -- aktuellen Monats-/Jahreswert selbst.
-        month = environment.currentPeriod or 0
+        -- Bestaetigt (siehe Funktionskommentar, FS25 AI Coding Reference):
+        -- currentMonth/currentYear sind echte, direkte Felder.
+        month = environment.currentMonth or 0
         year = environment.currentYear or 0
     end)
 
