@@ -35,7 +35,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
-TARGET_DIR="${1:-${REPO_ROOT}/mock-exchange}"
+TARGET_DIR="${1:-../mock-exchange}"
 INTERVAL_SECONDS="${2:-5}"
 WORLD_TICK_RATIO=6   # FarmPulseBridge.WORLD_POLL_INTERVAL_MS / FarmPulseBridge.POLL_INTERVAL_MS
 
