@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.MariaDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -25,9 +26,19 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * die Flyway-Migrationen (src/main/resources/db/migration) anstandslos
  * anwenden und die drei Ingest-Services die Austauschdateien korrekt in
  * historisierte Entitaeten abbilden und persistieren.
+ *
+ * <p>{@code @Transactional} haelt die Hibernate-Session ueber den gesamten
+ * Testmethodenaufruf offen, damit die lazy geladenen Collections
+ * ({@link WorldSnapshot#getFields()}/{@link WorldSnapshot#getStorages()})
+ * nach dem erneuten Laden ueber das Repository noch initialisiert werden
+ * koennen (Anwendung selbst laeuft bewusst mit {@code open-in-view: false},
+ * siehe application.yml) - die Ingest-Services bleiben dabei unveraendert
+ * eigenstaendig transaktional (Propagation.REQUIRED reiht sich hier nur in
+ * die Test-Transaktion ein).
  */
 @SpringBootTest
 @Testcontainers
+@Transactional
 class IngestIntegrationTest {
 
     @Container
