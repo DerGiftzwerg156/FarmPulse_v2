@@ -1,0 +1,172 @@
+#!/usr/bin/env bash
+#
+# mock-bridge.sh - simuliert FarmPulseBridge.lua, ohne dass FS25 laufen muss.
+#
+# Schreibt periodisch die drei Austauschdateien telemetry.json, world.json und
+# farm.json in ein Zielverzeichnis, exakt in Feldnamen/-reihenfolge/-typen wie
+# von der echten Bridge exportiert (siehe TelemetryCollector.toJson(),
+# WorldCollector.toJson(), FarmCollector.toJson() sowie die "Dateiformat"-
+# Abschnitte in Bridge/README.md). Damit laesst sich ein Downstream-Konsument
+# (z.B. ein Dashboard) End-to-End gegen einen plausiblen, sich ueber die Zeit
+# aendernden Datensatz testen, ohne dass die echte Bridge im Spiel laufen muss.
+#
+# telemetry.json wird bei jedem Tick neu geschrieben (Standard-Intervall 5s,
+# identisch zu FarmPulseBridge.POLL_INTERVAL_MS), world.json alle 6 Ticks
+# (identisch zum Verhaeltnis FarmPulseBridge.WORLD_POLL_INTERVAL_MS /
+# FarmPulseBridge.POLL_INTERVAL_MS = 30000 / 5000 = 6), farm.json einmalig
+# beim Start - dasselbe Aktualisierungsmuster wie in der echten Bridge.
+#
+# Verwendung:
+#   ./mock-bridge.sh [Zielverzeichnis] [Intervall-Sekunden]
+#
+# Die echte Bridge schreibt in
+# "<FS25-Nutzerprofil>/modSettings/FarmPulseBridge/" (siehe Bridge/README.md,
+# Abschnitt "Installation"). Dieses Repo enthaelt (noch) keine FarmPulse-Core-
+# Anwendung, die dieses Verzeichnis vorgibt - Standard-Zielverzeichnis ist
+# daher ein einfaches lokales Scratch-Verzeichnis; falls gegen einen echten
+# Downstream-Konsumenten getestet wird, dessen konfiguriertes Austausch-
+# verzeichnis als erstes Argument uebergeben.
+# Standard-Intervall: 5 Sekunden (identisch zu FarmPulseBridge.POLL_INTERVAL_MS).
+#
+# Mit Strg+C beenden.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+
+TARGET_DIR="${1:-${REPO_ROOT}/mock-exchange}"
+INTERVAL_SECONDS="${2:-5}"
+WORLD_TICK_RATIO=6   # FarmPulseBridge.WORLD_POLL_INTERVAL_MS / FarmPulseBridge.POLL_INTERVAL_MS
+
+mkdir -p "${TARGET_DIR}"
+TELEMETRY_FILE="${TARGET_DIR}/telemetry.json"
+WORLD_FILE="${TARGET_DIR}/world.json"
+FARM_FILE="${TARGET_DIR}/farm.json"
+
+echo "[mock-bridge] telemetry.json alle ${INTERVAL_SECONDS}s, world.json alle $((INTERVAL_SECONDS * WORLD_TICK_RATIO))s, farm.json einmalig -> ${TARGET_DIR}"
+echo "[mock-bridge] Beenden mit Strg+C."
+
+# --- Telemetrie-Zustand (siehe TelemetryCollector.lua fuer die Feldsemantik) ---
+hour=8
+minute=30
+day=1
+month=1
+year=1
+days_per_month=3
+money=50000
+farm_id=1
+weather_options=(sun rain cloudy fog snow)
+weather_index=0
+
+# --- Welt-Zustand (siehe FieldCollector/VehicleCollector/StorageCollector) ---
+fleet_value=125000
+wheat_amount=5000
+wheat_capacity=20000
+barley_amount=1200
+barley_capacity=20000
+
+# --- Betriebs-/Spieleridentitaet (siehe FarmCollector.lua), einmalig ---
+farm_name="Sonnenhof"
+player_name="Keno"
+
+# Jahreszeit rein aus dem Monat ableiten - identische Zuordnung wie
+# WeatherCollector.seasonFromMonth() (Monate 12,1,2 -> winter; 3-5 -> spring;
+# 6-8 -> summer; 9-11 -> autumn).
+season_from_month() {
+    case "$1" in
+        12|1|2) echo "winter" ;;
+        3|4|5) echo "spring" ;;
+        6|7|8) echo "summer" ;;
+        9|10|11) echo "autumn" ;;
+        *) echo "unknown" ;;
+    esac
+}
+
+write_telemetry() {
+    local season
+    season="$(season_from_month "${month}")"
+    local weather="${weather_options[$weather_index]}"
+    local tmp_file="${TELEMETRY_FILE}.tmp"
+
+    cat > "${tmp_file}" <<JSON
+{"hour":${hour},"minute":${minute},"day":${day},"month":${month},"year":${year},"daysPerMonth":${days_per_month},"money":${money},"farmId":${farm_id},"season":"${season}","weather":"${weather}"}
+JSON
+    mv "${tmp_file}" "${TELEMETRY_FILE}"
+}
+
+write_world() {
+    local tmp_file="${WORLD_FILE}.tmp"
+
+    cat > "${tmp_file}" <<JSON
+{"fleetValue":${fleet_value},"fields":[{"fieldId":1,"ownerFarmId":${farm_id},"sizeHa":4.53,"price":32000},{"fieldId":2,"ownerFarmId":${farm_id},"sizeHa":6.1,"price":45000},{"fieldId":3,"ownerFarmId":0,"sizeHa":3.2,"price":28000}],"storages":[{"fillType":"BARLEY","amount":${barley_amount},"capacity":${barley_capacity}},{"fillType":"WHEAT","amount":${wheat_amount},"capacity":${wheat_capacity}}]}
+JSON
+    mv "${tmp_file}" "${WORLD_FILE}"
+}
+
+write_farm() {
+    local tmp_file="${FARM_FILE}.tmp"
+
+    cat > "${tmp_file}" <<JSON
+{"farmName":"${farm_name}","playerName":"${player_name}"}
+JSON
+    mv "${tmp_file}" "${FARM_FILE}"
+}
+
+# farm.json aendert sich praktisch nie waehrend eines Spielstands - wird
+# deshalb, wie bei der echten Bridge (siehe FarmPulseBridge.tryActivate()),
+# nur einmalig geschrieben.
+write_farm
+
+tick=0
+while true; do
+    # Tageszeit voranschreiten lassen (5 Sim-Minuten je Tick, damit man einen
+    # Tages-/Monats-/Jahreswechsel in ueberschaubarer Zeit beobachten kann).
+    minute=$((minute + 5))
+    if [ "${minute}" -ge 60 ]; then
+        minute=$((minute - 60))
+        hour=$((hour + 1))
+        if [ "${hour}" -ge 24 ]; then
+            hour=$((hour - 24))
+            day=$((day + 1))
+            if [ "${day}" -gt "${days_per_month}" ]; then
+                day=1
+                month=$((month + 1))
+                if [ "${month}" -gt 12 ]; then
+                    month=1
+                    year=$((year + 1))
+                fi
+            fi
+        fi
+    fi
+
+    # Kontostand und Lagerbestaende leicht schwanken lassen, Wetter
+    # gelegentlich wechseln, damit der Verlauf im Dashboard sichtbar etwas
+    # tut (kein echtes Wirtschafts-/Wettermodell - nur zu Demo-/Testzwecken).
+    money=$((money + (RANDOM % 401) - 150))
+    fleet_value=$((fleet_value + (RANDOM % 2001) - 1000))
+    if [ "${fleet_value}" -lt 0 ]; then
+        fleet_value=0
+    fi
+    wheat_amount=$(((wheat_amount + (RANDOM % 601) - 200) % (wheat_capacity + 1)))
+    if [ "${wheat_amount}" -lt 0 ]; then
+        wheat_amount=0
+    fi
+    barley_amount=$(((barley_amount + (RANDOM % 301) - 100) % (barley_capacity + 1)))
+    if [ "${barley_amount}" -lt 0 ]; then
+        barley_amount=0
+    fi
+    if [ "$((RANDOM % 12))" -eq 0 ]; then
+        weather_index=$((RANDOM % ${#weather_options[@]}))
+    fi
+
+    write_telemetry
+    if [ "$((tick % WORLD_TICK_RATIO))" -eq 0 ]; then
+        write_world
+    fi
+
+    echo "[mock-bridge] Jahr ${year}, Tag ${day}/${days_per_month} (Monat ${month}), $(printf '%02d:%02d' "${hour}" "${minute}"), Kontostand ${money} EUR, Wetter ${weather_options[$weather_index]}"
+
+    tick=$((tick + 1))
+    sleep "${INTERVAL_SECONDS}"
+done
