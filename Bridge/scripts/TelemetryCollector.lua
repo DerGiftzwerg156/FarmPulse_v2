@@ -3,7 +3,11 @@
 
     Reine Verarbeitungslogik: nimmt rohe, bereits aus der GIANTS-Engine gelesene
     Werte entgegen (siehe FarmPulseBridge.lua fuer die eigentlichen Engine-
-    Zugriffe) und baut daraus die telemetry.json-Nutzlast:
+    Zugriffe) und baut daraus die telemetry.json-Nutzlast - die "schnellen",
+    sich haeufig aendernden Werte (Uhrzeit, Kontostand, Wetter). Besitz/
+    Vermoegen (Felder, Fuhrpark, Lager) wandert seit der Aufteilung in mehrere
+    Austauschdateien in world.json (siehe WorldCollector.lua), Betriebs-/
+    Spieleridentitaet in farm.json (siehe FarmCollector.lua):
 
         {
           "hour": 8,
@@ -14,9 +18,8 @@
           "daysPerMonth": 3,
           "money": 84250,
           "farmId": 1,
-          "fields": [
-            { "fieldId": 1, "ownerFarmId": 0, "sizeHa": 4.53, "price": 32000 }
-          ]
+          "season": "summer",
+          "weather": "sun"
         }
 
     Die Trennung von "rohe Engine-Werte lesen" (unsicher, siehe FarmPulseBridge.lua)
@@ -25,8 +28,8 @@
     einfachen `lua`-Interpreter getestet werden (siehe
     tests/test_telemetry_collector.lua).
 
-    Benoetigt JsonEncoder fuer die eigentliche Serialisierung; "fields" wird dabei
-    als bereits ueber FieldCollector.buildFields() normalisierte Liste erwartet.
+    Benoetigt JsonEncoder fuer die eigentliche Serialisierung; "season"/"weather"
+    werden dabei als bereits ueber WeatherCollector normalisierte Strings erwartet.
 ]]
 
 TelemetryCollector = {}
@@ -67,17 +70,21 @@ function TelemetryCollector.normalizeMinute(rawMinute)
     return minute
 end
 
+local function normalizeStringOrUnknown(value)
+    if type(value) ~= "string" or value == "" then
+        return "unknown"
+    end
+    return value
+end
+
 --- Baut aus rohen Eingabewerten eine validierte, normalisierte Telemetrie-Nutzlast.
 -- @param rawState Tabelle mit den Feldern hour, minute, day, month, year,
---        daysPerMonth, money, farmId, fields (optionale Liste bereits ueber
---        FieldCollector.buildFields() normalisierter Feld-Datensaetze)
+--        daysPerMonth, money, farmId, season, weather (season/weather werden
+--        als bereits ueber WeatherCollector normalisierte Strings erwartet -
+--        die Typpruefung hier ist nur ein zusaetzliches Sicherheitsnetz)
 -- @return normalisierte Tabelle mit denselben Feldern, bereit fuer toJson()
 function TelemetryCollector.buildPayload(rawState)
     rawState = rawState or {}
-    local fields = rawState.fields
-    if type(fields) ~= "table" then
-        fields = {}
-    end
 
     return {
         hour = TelemetryCollector.normalizeHour(rawState.hour),
@@ -88,25 +95,14 @@ function TelemetryCollector.buildPayload(rawState)
         daysPerMonth = toNonNegativeInt(rawState.daysPerMonth),
         money = toInt(rawState.money),
         farmId = toNonNegativeInt(rawState.farmId),
-        fields = fields,
+        season = normalizeStringOrUnknown(rawState.season),
+        weather = normalizeStringOrUnknown(rawState.weather),
     }
 end
 
 --- Serialisiert eine (bereits mit buildPayload erzeugte) Nutzlast als JSON-Text
--- mit stabiler Feldreihenfolge. Jeder Eintrag in "fields" wird einzeln ueber
--- JsonEncoder.encodeObject kodiert und die Ergebnisse dann als vorab kodiertes
--- Array (JsonEncoder.encodeRawArray) eingebettet, siehe JsonEncoder-Dateikommentar.
+-- mit stabiler Feldreihenfolge.
 function TelemetryCollector.toJson(payload)
-    local fieldEntries = {}
-    for i, field in ipairs(payload.fields) do
-        fieldEntries[i] = JsonEncoder.encodeObject({
-            { key = "fieldId", value = field.fieldId },
-            { key = "ownerFarmId", value = field.ownerFarmId },
-            { key = "sizeHa", value = field.sizeHa },
-            { key = "price", value = field.price },
-        })
-    end
-
     return JsonEncoder.encodeObject({
         { key = "hour", value = payload.hour },
         { key = "minute", value = payload.minute },
@@ -116,7 +112,8 @@ function TelemetryCollector.toJson(payload)
         { key = "daysPerMonth", value = payload.daysPerMonth },
         { key = "money", value = payload.money },
         { key = "farmId", value = payload.farmId },
-        { key = "fields", raw = JsonEncoder.encodeRawArray(fieldEntries) },
+        { key = "season", value = payload.season },
+        { key = "weather", value = payload.weather },
     })
 end
 
