@@ -9,8 +9,11 @@ CREATE TABLE field_snapshot (
     list_index          INT            NOT NULL,
     field_id            INT            NOT NULL,
     owner_farm_id       INT            NOT NULL,
-    size_ha             DECIMAL(10, 2) NOT NULL,
-    price               BIGINT         NOT NULL,
+    -- DOUBLE statt DECIMAL, da FieldSnapshot.sizeHa ein Java "double" ist -
+    -- Hibernates Schema-Validierung (ddl-auto: validate) erwartet dafuer
+    -- genau diesen SQL-Typ.
+    size_ha             DOUBLE NOT NULL,
+    price               BIGINT NOT NULL,
     PRIMARY KEY (id),
     CONSTRAINT fk_field_snapshot_world FOREIGN KEY (world_snapshot_id) REFERENCES world_snapshot (id) ON DELETE CASCADE,
     INDEX idx_field_snapshot_world (world_snapshot_id)
