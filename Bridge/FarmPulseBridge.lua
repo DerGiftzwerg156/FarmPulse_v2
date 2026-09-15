@@ -88,6 +88,13 @@ local function getMission()
 end
 
 --- Liest die FarmID des aktuellen Spielers.
+-- UNBESTAETIGT: Die Kern-Klasse hinter g_currentMission (Mission/BaseMission)
+-- wird von der FS25-Community-LUADOC nicht erfasst (siehe README.md) - sie
+-- deckt nur Klassen ab, deren Methoden dem geparsten Registrierungsmuster
+-- folgen, worunter die zentrale Mission-Klasse nicht faellt. getFarmId() ist
+-- dennoch eine in zahlreichen FS22/FS25-Community-Mods etablierte, weit
+-- verbreitete API (Kategorie B), aber nicht durch eine dieser Bridge
+-- zugaengliche offizielle Quelle bestaetigt.
 -- @return farmId (number), source (string, zu Debug-/Logzwecken)
 function FarmPulseBridge.readFarmId()
     local mission = getMission()
@@ -104,23 +111,27 @@ function FarmPulseBridge.readFarmId()
 end
 
 --- Liest den aktuellen Kontostand des Spieler-Betriebs.
--- Mehrere Fallback-Strategien (siehe Modul-Kommentar oben zu Kategorie-C-Wissen).
+-- Strategie 1 ist gegen die FS25-Community-LUADOC bestaetigt (siehe README.md,
+-- Abschnitt "Wichtiger Hinweis zur Vertrauenswuerdigkeit"): Farm.lua definiert
+-- dort tatsaechlich eine Methode Farm:getBalance() ("Get the current account
+-- balance of the farm") - ein rohes .money-Feld auf dem Farm-Objekt ist NICHT
+-- dokumentiert und wird deshalb bewusst nicht mehr verwendet.
 -- @return money (number), source (string, zu Debug-/Logzwecken)
 function FarmPulseBridge.readMoney()
     local mission = getMission()
 
-    -- Strategie 1 (FS22/FS25-Stil): Geld liegt pro Betrieb (Farm) im FarmManager.
+    -- Strategie 1 (bestaetigt, siehe Funktionskommentar): Farm:getBalance().
     local ok, result = pcall(function()
         local farmId = mission:getFarmId()
         local farm = g_farmManager:getFarmById(farmId)
-        return farm.money
+        return farm:getBalance()
     end)
     if ok and type(result) == "number" then
-        return result, "farmManager.getFarmById(farmId).money"
+        return result, "farmManager.getFarmById(farmId):getBalance()"
     end
 
-    -- Strategie 2 (aeltere/vereinfachte API, evtl. weiterhin als Komfort-Wrapper
-    -- vorhanden): direkter Money-Getter auf der Mission.
+    -- Strategie 2 (Fallback, unbestaetigt): aelterer/vereinfachter Money-Getter
+    -- direkt auf der Mission, falls Strategie 1 aus irgendeinem Grund fehlschlaegt.
     ok, result = pcall(function()
         return mission:getMoney()
     end)
@@ -174,11 +185,14 @@ end
 -- bewusst NICHT entschieden (siehe FieldCollector.lua) - es wird lediglich die
 -- rohe ownerFarmId mit exportiert.
 --
--- ANNAHME (unbestaetigt): g_farmlandManager:getFarmlands() liefert eine Liste/
--- Tabelle von Farmland-Objekten mit den Feldern id, farmId, areaInHa, price. Fuer
--- areaInHa/price werden je zwei plausible Namensvarianten probiert (areaInHa/
--- size bzw. price/landPrice), damit ein einzelner falscher Feldname nicht
--- sofort zu 0 fuehrt.
+-- BESTAETIGT (siehe README.md, Abschnitt "Wichtiger Hinweis zur
+-- Vertrauenswuerdigkeit"): Gegen die FS25-Community-LUADOC geprueft, die fuer
+-- FarmlandManager/Farmland den tatsaechlichen Engine-Quellcode zeigt.
+-- g_farmlandManager:getFarmlands() liefert `self.farmlands` (eine mit der
+-- Farmland-ID indizierte Tabelle, daher pairs() statt einer 1-indizierten
+-- Sequenz), und Farmland:load() weist genau die vier hier gelesenen Felder zu:
+-- id, areaInHa, price, farmId (Default FarmlandManager.NO_OWNER_FARM_ID, in der
+-- Doku als 0 bestaetigt).
 -- @return Liste roher {id, farmId, areaInHa, price}-Tabellen (leer, falls
 --         g_farmlandManager nicht verfuegbar ist oder der Zugriff fehlschlaegt)
 function FarmPulseBridge.readFarmlands()
@@ -190,8 +204,8 @@ function FarmPulseBridge.readFarmlands()
             table.insert(raw, {
                 id = farmland.id,
                 farmId = farmland.farmId or 0,
-                areaInHa = farmland.areaInHa or farmland.size or 0,
-                price = farmland.price or farmland.landPrice or 0,
+                areaInHa = farmland.areaInHa or 0,
+                price = farmland.price or 0,
             })
         end
     end)

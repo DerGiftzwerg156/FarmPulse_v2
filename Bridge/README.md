@@ -22,25 +22,33 @@ Dieser Mod wurde geschrieben, ohne ihn gegen ein laufendes FS25 testen zu
 koennen. Die grobe Architektur (Datei-Polling, kein Netzwerk aus Lua, kein
 JSON-Parser in der Engine, `Mission00.update`-Hook fuer Aktivierung/Taktgeber)
 ist bereits aus einem vorherigen Testlauf bestaetigt (siehe Git-Historie des
-urspruenglichen Bridge-Prototyps). Die **neu hinzugekommenen** konkreten
-Engine-API-Aufrufe sind dagegen ein fundierter, aber unbestaetigter erster
-Entwurf:
+urspruenglichen Bridge-Prototyps).
 
-| Wert | Verwendeter Ansatz | Unsicherheit |
+Die konkreten Engine-API-Aufrufe wurden zusaetzlich gegen die
+**[FS25 Community LUADOC](https://github.com/umbraprior/FS25-Community-LUADOC)**
+abgeglichen (die offizielle GIANTS Developer Network-Doku unter
+`gdn.giants-software.com` war aus dieser Entwicklungsumgebung heraus nicht
+erreichbar). Diese Community-Doku extrahiert Klassen/Methoden inkl. des
+tatsaechlichen dekompilierten Lua-Quellcodes direkt aus dem Spiel, deckt aber
+nur Klassen ab, deren Methoden einem bestimmten Registrierungsmuster folgen -
+die zentrale `Mission`/`Environment`-Kernklasse hinter `g_currentMission`
+faellt NICHT darunter und bleibt daher unbestaetigt:
+
+| Wert | Verwendeter Ansatz | Status |
 |---|---|---|
-| Stunde/Minute | `g_currentMission.environment.dayTime`, angenommen in Millisekunden seit Mitternacht, umgerechnet in Stunde/Minute | Einheit von `dayTime` ist nicht sicher bestaetigt |
-| Tag im Monat | `g_currentMission.environment.currentDayInPeriod` | Feldname unbestaetigt |
-| Monat | `g_currentMission.environment.currentPeriod` (1-12) | Feldname unbestaetigt |
-| Jahr | `g_currentMission.environment.currentYear` | Feldname unbestaetigt |
-| Tage je Monat | `g_currentMission.environment.daysPerPeriod` | Feldname unbestaetigt (bereits im urspruenglichen Prototyp so verwendet) |
-| FarmID | `g_currentMission:getFarmId()` | Bereits im urspruenglichen Prototyp als Zwischenschritt verwendet, jetzt direkt exportiert |
-| Kontostand | `g_farmManager:getFarmById(farmId).money`, Fallback `g_currentMission:getMoney()` | Bereits aus dem urspruenglichen Prototyp uebernommen |
-| Feldliste | `g_farmlandManager:getFarmlands()`, je Eintrag `.id`/`.farmId`/`.areaInHa` (Fallback `.size`)/`.price` (Fallback `.landPrice`) | Sowohl die Manager-Methode als auch die Feldnamen auf dem Farmland-Objekt sind unbestaetigt |
+| Stunde/Minute | `g_currentMission.environment.dayTime`, angenommen in Millisekunden seit Mitternacht, umgerechnet in Stunde/Minute | **Unbestaetigt** - `Environment`-Klasse wird von der Community-LUADOC nicht erfasst |
+| Tag im Monat | `g_currentMission.environment.currentDayInPeriod` | **Unbestaetigt**, Feldname aus dem "Period"-Vokabular abgeleitet (siehe `MessageType.PERIOD_CHANGED`/`periodChanged()`-Hooks, die in der Doku fuer mehrere Klassen belegt sind) |
+| Monat | `g_currentMission.environment.currentPeriod` (1-12) | **Unbestaetigt**, gleiche Herleitung |
+| Jahr | `g_currentMission.environment.currentYear` | **Unbestaetigt** |
+| Tage je Monat | `g_currentMission.environment.daysPerPeriod` | **Unbestaetigt** (bereits im urspruenglichen Prototyp so verwendet) |
+| FarmID | `g_currentMission:getFarmId()` | **Unbestaetigt** durch die Community-LUADOC (Mission-Kernklasse nicht erfasst), aber eine in zahlreichen FS22/FS25-Community-Mods etablierte, weit verbreitete API |
+| Kontostand | `g_farmManager:getFarmById(farmId):getBalance()`, Fallback `g_currentMission:getMoney()` | **Bestaetigt**: `Farm.md` in der Community-LUADOC zeigt die dokumentierte Methode `Farm:getBalance()` ("Get the current account balance of the farm"). Ein rohes `.money`-Feld ist NICHT dokumentiert und wird deshalb nicht mehr verwendet (Korrektur gegenueber einer fruehen Fassung dieser Bridge) |
+| Feldliste | `g_farmlandManager:getFarmlands()`, je Eintrag `.id`/`.farmId`/`.areaInHa`/`.price` | **Bestaetigt**: `FarmlandManager.md` zeigt `getFarmlands()` liefert `self.farmlands` (eine per Farmland-ID indizierte Tabelle - daher `pairs()` statt einer 1-indizierten Sequenz), und `Farmland.md` zeigt in `Farmland:load()` den Quellcode, der genau diese vier Felder setzt (Default-Besitzer `FarmlandManager.NO_OWNER_FARM_ID`, laut `getFarmlandOwner()`-Doku `0`) |
 
-Jeder dieser Zugriffe ist ueber `pcall()` abgesichert: Schlaegt ein Aufruf
-fehl, wird ein Platzhalterwert (0 bzw. eine leere `fields`-Liste) exportiert
-und eine Warnung in `log.txt` hinterlassen, statt dass die Bridge abstuerzt.
-Das Verhalten laesst sich also risikofrei ausprobieren.
+Jeder dieser Zugriffe ist trotzdem ueber `pcall()` abgesichert: Schlaegt ein
+Aufruf fehl, wird ein Platzhalterwert (0 bzw. eine leere `fields`-Liste)
+exportiert und eine Warnung in `log.txt` hinterlassen, statt dass die Bridge
+abstuerzt. Das Verhalten laesst sich also risikofrei ausprobieren.
 
 ## Test-Feedback-Loop (bitte einmal durchfuehren)
 
