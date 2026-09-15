@@ -7,10 +7,11 @@ den Datenexport-Teil des Projekts:
 | Ordner | Inhalt |
 |---|---|
 | [`Bridge/`](Bridge/) | **FarmPulse Bridge** - der eigentliche FS25-Mod (Lua). Exportiert periodisch `telemetry.json`, `world.json` und `farm.json` in einen Austauschordner. Siehe [`Bridge/README.md`](Bridge/README.md) fuer Dateiformate, Architektur, Installation und Testlauf. |
+| [`backend/`](backend/) | **FarmPulse Backend** - Spring-Boot-Anwendung, die die drei Austauschdateien periodisch einliest und in MariaDB historisiert (Flyway-Migrationen fuer das Schema). Siehe [`backend/README.md`](backend/README.md) fuer Architektur, Konfiguration und lokale Entwicklung. |
 | [`Tools/`](Tools/) | Hilfsskripte fuer die Entwicklung, u.a. [`mock-bridge.sh`](Tools/mock-bridge.sh), das die Ausgabedateien der Bridge simuliert, ohne dass FS25 laufen muss. |
 
-Eine **FarmPulse Core**-Anwendung (das Dashboard, das die drei JSON-Dateien
-konsumiert und visualisiert) ist noch nicht Teil dieses Repos.
+Eine **FarmPulse Core**-Dashboard-Oberflaeche (die die im Backend historisierten Daten
+visualisiert) ist noch nicht Teil dieses Repos.
 
 ## Schnellstart
 
@@ -41,11 +42,22 @@ lua5.4 tests/run_tests.lua
 Details siehe [`Bridge/README.md`, Abschnitt "Tests ausfuehren"](Bridge/README.md#tests-ausfuehren).
 Diese Tests laufen auch automatisch in CI, siehe unten.
 
+### Backend lokal starten
+
+```bash
+cd backend
+docker compose up -d   # MariaDB
+mvn spring-boot:run    # liest standardmaessig ../mock-exchange
+```
+
+Details siehe [`backend/README.md`](backend/README.md).
+
 ## CI
 
 Jeder Push und Pull Request durchlaeuft die GitHub-Actions-Pipeline
 [`.github/workflows/test.yml`](.github/workflows/test.yml), welche die
-Bridge-Unit-Tests ausfuehrt.
+Bridge-Unit-Tests sowie die Backend-Tests (Maven, inkl. Testcontainers-
+Integrationstests gegen MariaDB) ausfuehrt.
 
 ## Mitarbeiten
 

@@ -1,5 +1,6 @@
 [tools]
 lua = "5.4"
+java = "21"
 
 [tasks.test]
 description = "Bridge Lua-Unit-Tests ausfuehren"
@@ -9,3 +10,13 @@ run = "lua tests/run_tests.lua"
 [tasks."mock-bridge"]
 description = "Bridge-Ausgabe simulieren, ohne dass FS25 laeuft"
 run = "./Tools/mock-bridge.sh"
+
+[tasks."backend-test"]
+description = "Backend-Unit- und Integrationstests ausfuehren (Docker fuer Testcontainers noetig)"
+dir = "backend"
+run = "mvn test"
+
+[tasks."backend-run"]
+description = "Backend lokal starten (liest standardmaessig ../mock-exchange)"
+dir = "backend"
+run = "mvn spring-boot:run"

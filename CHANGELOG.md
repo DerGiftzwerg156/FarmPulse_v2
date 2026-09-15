@@ -8,6 +8,11 @@ Versionsnummern der Bridge folgen [Semantic Versioning](https://semver.org/lang/
 
 ## [Unreleased]
 
+- **Backend** (neu): Spring-Boot-Anwendung unter `backend/`, die
+  `telemetry.json`/`world.json`/`farm.json` periodisch einliest, ueber einen
+  Verarbeitungsschritt-Erweiterungspunkt reicht und als historisierte
+  Entitaeten in MariaDB speichert (Schema per Flyway-Migrationen). Siehe
+  `backend/README.md`.
 - Projekt-Grundlagen ergaenzt: Root-`README.md`, `LICENSE` (MIT),
   `CONTRIBUTING.md`, GitHub-Actions-Testpipeline, PR-/Issue-Templates.
 - `season`/`weather` aus `telemetry.json` entfernt und `WeatherCollector`

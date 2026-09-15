@@ -23,3 +23,21 @@ jobs:
       - name: Bridge-Tests ausfuehren
         working-directory: Bridge
         run: lua5.4 tests/run_tests.lua
+
+  backend-tests:
+    name: Backend Tests (Maven)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: JDK 21 einrichten
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Backend-Tests ausfuehren
+        working-directory: backend
+        run: mvn --batch-mode test
