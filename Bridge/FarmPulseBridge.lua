@@ -88,18 +88,25 @@ local function getMission()
 end
 
 --- Liest die FarmID des aktuellen Spielers.
--- UNBESTAETIGT: Die Kern-Klasse hinter g_currentMission (Mission/BaseMission)
--- wird von der FS25-Community-LUADOC nicht erfasst (siehe README.md) - sie
--- deckt nur Klassen ab, deren Methoden dem geparsten Registrierungsmuster
--- folgen, worunter die zentrale Mission-Klasse nicht faellt. getFarmId() ist
--- dennoch eine in zahlreichen FS22/FS25-Community-Mods etablierte, weit
--- verbreitete API (Kategorie B), aber nicht durch eine dieser Bridge
--- zugaengliche offizielle Quelle bestaetigt.
+-- Strategie 1 ist gegen die offizielle GDN-Dokumentation bestaetigt (siehe
+-- README.md): Der GIANTS-eigene Quellcode von AbstractMission:update() liest
+-- dort direkt `g_localPlayer.farmId`, um zu pruefen, ob eine Mission zum
+-- lokalen Spieler gehoert - ein bestaetigtes, offizielles Feld.
 -- @return farmId (number), source (string, zu Debug-/Logzwecken)
 function FarmPulseBridge.readFarmId()
-    local mission = getMission()
-
+    -- Strategie 1 (bestaetigt, siehe Funktionskommentar): g_localPlayer.farmId.
     local ok, result = pcall(function()
+        return g_localPlayer.farmId
+    end)
+    if ok and type(result) == "number" then
+        return result, "g_localPlayer.farmId"
+    end
+
+    -- Strategie 2 (Fallback, unbestaetigt): aeltere, in vielen Community-Mods
+    -- verwendete getFarmId()-Methode auf der Mission, falls g_localPlayer aus
+    -- irgendeinem Grund nicht verfuegbar ist (z.B. vor vollstaendigem Login).
+    local mission = getMission()
+    ok, result = pcall(function()
         return mission:getFarmId()
     end)
     if ok and type(result) == "number" then
@@ -111,18 +118,19 @@ function FarmPulseBridge.readFarmId()
 end
 
 --- Liest den aktuellen Kontostand des Spieler-Betriebs.
--- Strategie 1 ist gegen die FS25-Community-LUADOC bestaetigt (siehe README.md,
--- Abschnitt "Wichtiger Hinweis zur Vertrauenswuerdigkeit"): Farm.lua definiert
--- dort tatsaechlich eine Methode Farm:getBalance() ("Get the current account
--- balance of the farm") - ein rohes .money-Feld auf dem Farm-Objekt ist NICHT
--- dokumentiert und wird deshalb bewusst nicht mehr verwendet.
+-- Strategie 1 ist gegen die offizielle GDN-Dokumentation bestaetigt (siehe
+-- README.md): Farm.lua definiert dort tatsaechlich eine Methode
+-- Farm:getBalance() ("Get the current account balance of the farm") - ein
+-- rohes .money-Feld auf dem Farm-Objekt ist NICHT dokumentiert und wird
+-- deshalb bewusst nicht mehr verwendet. Nutzt dieselbe FarmID-Ermittlung wie
+-- readFarmId() (g_localPlayer.farmId zuerst).
 -- @return money (number), source (string, zu Debug-/Logzwecken)
 function FarmPulseBridge.readMoney()
     local mission = getMission()
 
     -- Strategie 1 (bestaetigt, siehe Funktionskommentar): Farm:getBalance().
     local ok, result = pcall(function()
-        local farmId = mission:getFarmId()
+        local farmId = FarmPulseBridge.readFarmId()
         local farm = g_farmManager:getFarmById(farmId)
         return farm:getBalance()
     end)
@@ -146,6 +154,16 @@ end
 --- Liest Uhrzeit (Stunde/Minute), Spieltag/Monat/Jahr innerhalb des Kalenders
 -- sowie die konfigurierte Monatslaenge aus dem Environment-Objekt der laufenden
 -- Mission.
+--
+-- Gegen die offizielle GDN-Dokumentation bestaetigt (siehe README.md, Klasse
+-- AbstractMission): environment.dayTime ist in Millisekunden seit Mitternacht
+-- (belegt durch die Verrechnung mit `24*60*60*1000` in
+-- AbstractMission:getMinutesLeft()), environment.daysPerPeriod ist ein echtes
+-- Feld (AbstractMission:setDefaultEndDate()), und der Tag-im-Monat wird NICHT
+-- ueber ein rohes Feld, sondern ueber die Methode
+-- environment:getDayInPeriodFromDay(currentMonotonicDay) berechnet (ebenfalls
+-- setDefaultEndDate()) - environment.currentMonotonicDay ist dabei der
+-- fortlaufende Tageszaehler seit Spielbeginn, kein Tag-im-Monat.
 -- @return hour, minute, day, month, year, daysPerMonth (jeweils number, Rohwerte
 --         vor Normalisierung durch TelemetryCollector)
 function FarmPulseBridge.readCalendar()
@@ -155,22 +173,26 @@ function FarmPulseBridge.readCalendar()
     local ok = pcall(function()
         local environment = mission.environment
 
-        -- ANNAHME (unbestaetigt): environment.dayTime liegt in Millisekunden seit
-        -- Mitternacht vor (0..86399999).
+        -- Bestaetigt: dayTime in Millisekunden seit Mitternacht (siehe
+        -- Funktionskommentar).
         local rawDayTime = environment.dayTime or 0
         hour = math.floor(rawDayTime / (1000 * 60 * 60))
         minute = math.floor((rawDayTime % (1000 * 60 * 60)) / (1000 * 60))
 
-        -- ANNAHME (unbestaetigt): Feldnamen fuer Tag/Monat/Jahr innerhalb des
-        -- Kalenders. currentDayInPeriod = Tag im aktuellen Monat (1-basiert),
-        -- currentPeriod = Monat (1-12), currentYear = Jahr (1-basiert).
-        day = environment.currentDayInPeriod or 0
+        -- Bestaetigt: daysPerPeriod ist ein echtes Feld.
+        daysPerMonth = environment.daysPerPeriod or 0
+
+        -- Bestaetigt: Tag-im-Monat ueber getDayInPeriodFromDay(), nicht ueber
+        -- ein rohes Feld (siehe Funktionskommentar).
+        local currentMonotonicDay = environment.currentMonotonicDay or 0
+        day = environment:getDayInPeriodFromDay(currentMonotonicDay) or 0
+
+        -- ANNAHME (weiterhin unbestaetigt): Feldnamen fuer Monat/Jahr. Die GDN-
+        -- Quelle zu AbstractMission zeigt zwar, dass "Period" das Monats-
+        -- Vokabular der Engine ist, belegt aber keine direkten Felder fuer den
+        -- aktuellen Monats-/Jahreswert selbst.
         month = environment.currentPeriod or 0
         year = environment.currentYear or 0
-
-        -- ANNAHME (unbestaetigt, bereits aus dem urspruenglichen Bridge-Prototyp
-        -- uebernommen): Feldname fuer die Anzahl Spieltage je Monat.
-        daysPerMonth = environment.daysPerPeriod or 0
     end)
 
     if not ok then

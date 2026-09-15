@@ -24,26 +24,38 @@ JSON-Parser in der Engine, `Mission00.update`-Hook fuer Aktivierung/Taktgeber)
 ist bereits aus einem vorherigen Testlauf bestaetigt (siehe Git-Historie des
 urspruenglichen Bridge-Prototyps).
 
-Die konkreten Engine-API-Aufrufe wurden zusaetzlich gegen die
-**[FS25 Community LUADOC](https://github.com/umbraprior/FS25-Community-LUADOC)**
-abgeglichen (die offizielle GIANTS Developer Network-Doku unter
-`gdn.giants-software.com` war aus dieser Entwicklungsumgebung heraus nicht
-erreichbar). Diese Community-Doku extrahiert Klassen/Methoden inkl. des
-tatsaechlichen dekompilierten Lua-Quellcodes direkt aus dem Spiel, deckt aber
-nur Klassen ab, deren Methoden einem bestimmten Registrierungsmuster folgen -
-die zentrale `Mission`/`Environment`-Kernklasse hinter `g_currentMission`
-faellt NICHT darunter und bleibt daher unbestaetigt:
+Die konkreten Engine-API-Aufrufe wurden gegen zwei Quellen abgeglichen:
+
+1. Die **[FS25 Community LUADOC](https://github.com/umbraprior/FS25-Community-LUADOC)**,
+   die Klassen/Methoden inkl. des tatsaechlichen dekompilierten Lua-Quellcodes
+   direkt aus dem Spiel extrahiert, aber nur Klassen erfasst, deren Methoden
+   einem bestimmten Registrierungsmuster folgen.
+2. Die **offizielle [GDN-Dokumentation](https://gdn.giants-software.com/documentation_scripting_fs25.php)**
+   (`gdn.giants-software.com`) selbst - aus dieser Entwicklungsumgebung heraus
+   per Netzwerk-Policy nicht direkt erreichbar, aber die Seite fuer die Klasse
+   `AbstractMission` (Category 59, ebenfalls mit echtem Quellcode) wurde
+   manuell bereitgestellt und ausgewertet. Sie referenziert an mehreren
+   Stellen `g_currentMission.environment` und `g_localPlayer`, wodurch sich
+   einige der zuvor nur ueber die Community-LUADOC abgeglichenen Annahmen
+   zusaetzlich (bzw. erstmals) offiziell bestaetigen liessen:
 
 | Wert | Verwendeter Ansatz | Status |
 |---|---|---|
-| Stunde/Minute | `g_currentMission.environment.dayTime`, angenommen in Millisekunden seit Mitternacht, umgerechnet in Stunde/Minute | **Unbestaetigt** - `Environment`-Klasse wird von der Community-LUADOC nicht erfasst |
-| Tag im Monat | `g_currentMission.environment.currentDayInPeriod` | **Unbestaetigt**, Feldname aus dem "Period"-Vokabular abgeleitet (siehe `MessageType.PERIOD_CHANGED`/`periodChanged()`-Hooks, die in der Doku fuer mehrere Klassen belegt sind) |
-| Monat | `g_currentMission.environment.currentPeriod` (1-12) | **Unbestaetigt**, gleiche Herleitung |
-| Jahr | `g_currentMission.environment.currentYear` | **Unbestaetigt** |
-| Tage je Monat | `g_currentMission.environment.daysPerPeriod` | **Unbestaetigt** (bereits im urspruenglichen Prototyp so verwendet) |
-| FarmID | `g_currentMission:getFarmId()` | **Unbestaetigt** durch die Community-LUADOC (Mission-Kernklasse nicht erfasst), aber eine in zahlreichen FS22/FS25-Community-Mods etablierte, weit verbreitete API |
-| Kontostand | `g_farmManager:getFarmById(farmId):getBalance()`, Fallback `g_currentMission:getMoney()` | **Bestaetigt**: `Farm.md` in der Community-LUADOC zeigt die dokumentierte Methode `Farm:getBalance()` ("Get the current account balance of the farm"). Ein rohes `.money`-Feld ist NICHT dokumentiert und wird deshalb nicht mehr verwendet (Korrektur gegenueber einer fruehen Fassung dieser Bridge) |
-| Feldliste | `g_farmlandManager:getFarmlands()`, je Eintrag `.id`/`.farmId`/`.areaInHa`/`.price` | **Bestaetigt**: `FarmlandManager.md` zeigt `getFarmlands()` liefert `self.farmlands` (eine per Farmland-ID indizierte Tabelle - daher `pairs()` statt einer 1-indizierten Sequenz), und `Farmland.md` zeigt in `Farmland:load()` den Quellcode, der genau diese vier Felder setzt (Default-Besitzer `FarmlandManager.NO_OWNER_FARM_ID`, laut `getFarmlandOwner()`-Doku `0`) |
+| Stunde/Minute | `g_currentMission.environment.dayTime`, in Millisekunden seit Mitternacht, umgerechnet in Stunde/Minute | **Bestaetigt** (offizielle GDN-Doku): `AbstractMission:getMinutesLeft()` verrechnet `environment.dayTime` direkt mit `24*60*60*1000` |
+| Tag im Monat | `g_currentMission.environment:getDayInPeriodFromDay(environment.currentMonotonicDay)` | **Bestaetigt** (offizielle GDN-Doku): `AbstractMission:setDefaultEndDate()` berechnet den Tag-im-Monat exakt so - **kein** rohes Feld `currentDayInPeriod` (fruehere Annahme war falsch, siehe Korrektur unten) |
+| Monat | `g_currentMission.environment.currentPeriod` (1-12) | **Unbestaetigt** - kein Beleg in den bisher eingesehenen Quellen fuer ein direktes Feld |
+| Jahr | `g_currentMission.environment.currentYear` | **Unbestaetigt**, gleicher Stand |
+| Tage je Monat | `g_currentMission.environment.daysPerPeriod` | **Bestaetigt** (offizielle GDN-Doku): direktes Feld, referenziert in `AbstractMission:setDefaultEndDate()` |
+| FarmID | `g_localPlayer.farmId`, Fallback `g_currentMission:getFarmId()` | **Bestaetigt** (offizielle GDN-Doku): `AbstractMission:update()` prueft `g_localPlayer.farmId == self.farmId` direkt gegen ein echtes Feld. `getFarmId()` bleibt als unbestaetigter, aber in der Community weit verbreiteter Fallback |
+| Kontostand | `g_farmManager:getFarmById(farmId):getBalance()`, Fallback `g_currentMission:getMoney()` | **Bestaetigt** (Community-LUADOC): `Farm.md` zeigt die dokumentierte Methode `Farm:getBalance()`. Ein rohes `.money`-Feld ist NICHT dokumentiert und wird deshalb nicht mehr verwendet (Korrektur gegenueber einer fruehen Fassung dieser Bridge) |
+| Feldliste | `g_farmlandManager:getFarmlands()`, je Eintrag `.id`/`.farmId`/`.areaInHa`/`.price` | **Bestaetigt** (Community-LUADOC): `FarmlandManager.md` zeigt `getFarmlands()` liefert `self.farmlands` (eine per Farmland-ID indizierte Tabelle - daher `pairs()` statt einer 1-indizierten Sequenz), und `Farmland.md` zeigt in `Farmland:load()` den Quellcode, der genau diese vier Felder setzt (Default-Besitzer `FarmlandManager.NO_OWNER_FARM_ID`, laut `getFarmlandOwner()`-Doku `0`) |
+
+Offen bleiben also nur noch Monat (`currentPeriod`) und Jahr (`currentYear`) -
+fuer beide gibt es (Stand jetzt) keinen eingesehenen Beleg, weder als Feld
+noch als Methode. Die `Environment`-Klasse selbst wurde bisher nicht direkt
+in der GDN-Doku eingesehen (nur Referenzen darauf aus `AbstractMission`
+heraus) - eine gezielte Pruefung dieser Klassenseite wuerde die letzten
+beiden Luecken voraussichtlich schliessen.
 
 Jeder dieser Zugriffe ist trotzdem ueber `pcall()` abgesichert: Schlaegt ein
 Aufruf fehl, wird ein Platzhalterwert (0 bzw. eine leere `fields`-Liste)
