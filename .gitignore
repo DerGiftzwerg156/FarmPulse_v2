@@ -1,5 +1,6 @@
 # Ausgabe von Tools/mock-bridge.sh (lokale Testdaten, kein Projektinhalt)
 /mock-exchange/
+/tmp/
 
 # JetBrains IDEs (siehe auch .idea/.gitignore fuer projektinterne Ausnahmen)
 .idea/
