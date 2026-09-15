@@ -4,34 +4,56 @@
 
 ## Betroffene Bereiche
 
+<!--
+Zutreffendes ankreuzen. Neue Ordner (z.B. Backend, WebDashboard) werden hier
+ergaenzt, sobald sie im Repo existieren.
+-->
+
 - [ ] `Bridge` (FS-25 Bridge Mod)
 - [ ] `Tools` (Tools)
-- [ ] Doku (`README.md`, `Bridge/README.md`, ...)
+- [ ] Doku (`README.md`, `CONTRIBUTING.md`, `<Bereich>/README.md`, ...)
 - [ ] Sonstiges: <!-- z.B. CI, .gitignore -->
 
 ## Wie wurde getestet?
 
 <!--
-Fuer Aenderungen an Bridge/scripts/*.lua: Ausgabe von
-`lua5.4 tests/run_tests.lua` (Zusammenfassungszeile genuegt).
-
-Fuer Aenderungen an FarmPulseBridge.lua selbst (nicht automatisiert testbar):
-kurz beschreiben, wie/ob manuell im Spiel getestet wurde, siehe
-Bridge/README.md, Abschnitt "Test-Feedback-Loop".
+Kurz beschreiben, wie die Aenderung getestet wurde (automatisiert und/oder
+manuell). Bereichsspezifische Testbefehle stehen im README des jeweiligen
+Bereichs, z.B. Bridge/README.md, Abschnitt "Tests ausfuehren"
+(`lua5.4 tests/run_tests.lua`, Zusammenfassungszeile genuegt) bzw.
+"Test-Feedback-Loop" fuer manuelle In-Game-Tests.
 -->
 
 ## Checkliste
 
+Allgemein (gilt fuer jeden Bereich):
+
 - [ ] Ich habe [`CONTRIBUTING.md`](../CONTRIBUTING.md) gelesen und die dortige
       Checkliste vor Erstellen dieses PRs durchgearbeitet.
+- [ ] Die Doku im betroffenen Bereich (`README.md` des Bereichs bzw. des
+      Repo-Roots) ist aktuell, falls sich Verhalten, Schnittstellen oder
+      Dateiformate geaendert haben.
+- [ ] Neue/geaenderte Logik ist durch Tests abgedeckt, sofern der Bereich
+      automatisiertes Testen unterstuetzt.
+- [ ] `git status`/`git diff` durchgesehen - keine versehentlichen
+      Zusatzdateien oder Secrets im Diff.
+
+<details>
+<summary>Bridge-spezifisch (nur falls <code>Bridge/</code> betroffen)</summary>
+
 - [ ] `lua5.4 tests/run_tests.lua` laeuft lokal ohne Fehlschlaege (falls
       `Bridge/scripts/*` oder `Bridge/tests/*` betroffen sind).
-- [ ] Neue/geaenderte Logik in `Bridge/scripts/` ist durch Tests abgedeckt.
 - [ ] Neue Dateien unter `Bridge/scripts/` sind in `Bridge/modDesc.xml`
-      eingetragen (falls zutreffend).
+      eingetragen.
 - [ ] Dateiformat-Doku in `Bridge/README.md` aktualisiert (falls sich
       `telemetry.json`/`world.json`/`farm.json` geaendert haben).
 - [ ] `Tools/mock-bridge.sh` an geaendertes Dateiformat angepasst (falls
       zutreffend).
-- [ ] `git status`/`git diff` durchgesehen - keine versehentlichen
-      Zusatzdateien oder Secrets im Diff.
+
+</details>
+
+<!--
+Fuer weitere Bereiche (z.B. Backend, WebDashboard) hier analog einen
+eigenen <details>-Block mit bereichsspezifischer Checkliste ergaenzen,
+sobald der Bereich im Repo existiert.
+-->
