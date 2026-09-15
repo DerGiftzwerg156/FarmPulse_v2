@@ -8,8 +8,8 @@ eines Pull Requests** zu erledigen ist.
 
 - Entwickle auf einem eigenen Feature-Branch, nicht direkt auf `main`.
 - Schreibe kurze, aussagekraeftige Commit-Nachrichten auf Deutsch (wie in der
-  bisherigen Historie ueblich), z.B. `Bridge: WeatherCollector um Fallback
-  fuer unbekannte Wetterwerte erweitern`.
+  bisherigen Historie ueblich), z.B. `Bridge: StorageCollector um Fallback
+  fuer unbekannte Fill-Typen erweitern`.
 - Ein Commit sollte eine in sich abgeschlossene, nachvollziehbare Aenderung
   enthalten.
 

@@ -10,6 +10,9 @@ Versionsnummern der Bridge folgen [Semantic Versioning](https://semver.org/lang/
 
 - Projekt-Grundlagen ergaenzt: Root-`README.md`, `LICENSE` (MIT),
   `CONTRIBUTING.md`, GitHub-Actions-Testpipeline, PR-/Issue-Templates.
+- `season`/`weather` aus `telemetry.json` entfernt und `WeatherCollector`
+  komplett entfernt, da dessen einziger Zweck (Jahreszeit-/Wetter-Werte fuer
+  `telemetry.json`) damit entfaellt.
 
 ## [2.1.0] - Bridge
 

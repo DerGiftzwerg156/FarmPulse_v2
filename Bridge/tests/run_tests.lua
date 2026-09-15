@@ -8,7 +8,7 @@
 
     Getestet werden ausschliesslich die GIANTS-unabhaengigen Logikmodule
     (JsonEncoder, PollTimer, FieldCollector, VehicleCollector, StorageCollector,
-    WeatherCollector, FarmCollector, WorldCollector, TelemetryCollector) -
+    FarmCollector, WorldCollector, TelemetryCollector) -
     FarmPulseBridge.lua selbst (die GIANTS-Engine-Glue) ist NICHT auf diese
     Weise testbar, siehe README.md, Abschnitt "Tests ausfuehren".
 ]]
@@ -23,7 +23,6 @@ local suites = {
     { name = "FieldCollector", loader = "tests.test_field_collector" },
     { name = "VehicleCollector", loader = "tests.test_vehicle_collector" },
     { name = "StorageCollector", loader = "tests.test_storage_collector" },
-    { name = "WeatherCollector", loader = "tests.test_weather_collector" },
     { name = "FarmCollector", loader = "tests.test_farm_collector" },
     { name = "WorldCollector", loader = "tests.test_world_collector" },
     { name = "TelemetryCollector", loader = "tests.test_telemetry_collector" },

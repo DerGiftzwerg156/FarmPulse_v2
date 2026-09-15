@@ -56,8 +56,6 @@ year=1
 days_per_month=3
 money=50000
 farm_id=1
-weather_options=(sun rain cloudy fog snow)
-weather_index=0
 
 # --- Welt-Zustand (siehe FieldCollector/VehicleCollector/StorageCollector) ---
 fleet_value=125000
@@ -70,27 +68,11 @@ barley_capacity=20000
 farm_name="Sonnenhof"
 player_name="Keno"
 
-# Jahreszeit rein aus dem Monat ableiten - identische Zuordnung wie
-# WeatherCollector.seasonFromMonth() (Monate 12,1,2 -> winter; 3-5 -> spring;
-# 6-8 -> summer; 9-11 -> autumn).
-season_from_month() {
-    case "$1" in
-        12|1|2) echo "winter" ;;
-        3|4|5) echo "spring" ;;
-        6|7|8) echo "summer" ;;
-        9|10|11) echo "autumn" ;;
-        *) echo "unknown" ;;
-    esac
-}
-
 write_telemetry() {
-    local season
-    season="$(season_from_month "${month}")"
-    local weather="${weather_options[$weather_index]}"
     local tmp_file="${TELEMETRY_FILE}.tmp"
 
     cat > "${tmp_file}" <<JSON
-{"hour":${hour},"minute":${minute},"day":${day},"month":${month},"year":${year},"daysPerMonth":${days_per_month},"money":${money},"farmId":${farm_id},"season":"${season}","weather":"${weather}"}
+{"hour":${hour},"minute":${minute},"day":${day},"month":${month},"year":${year},"daysPerMonth":${days_per_month},"money":${money},"farmId":${farm_id}}
 JSON
     mv "${tmp_file}" "${TELEMETRY_FILE}"
 }
@@ -140,9 +122,9 @@ while true; do
         fi
     fi
 
-    # Kontostand und Lagerbestaende leicht schwanken lassen, Wetter
-    # gelegentlich wechseln, damit der Verlauf im Dashboard sichtbar etwas
-    # tut (kein echtes Wirtschafts-/Wettermodell - nur zu Demo-/Testzwecken).
+    # Kontostand und Lagerbestaende leicht schwanken lassen, damit der Verlauf
+    # im Dashboard sichtbar etwas tut (kein echtes Wirtschaftsmodell - nur zu
+    # Demo-/Testzwecken).
     money=$((money + (RANDOM % 401) - 150))
     fleet_value=$((fleet_value + (RANDOM % 2001) - 1000))
     if [ "${fleet_value}" -lt 0 ]; then
@@ -156,16 +138,13 @@ while true; do
     if [ "${barley_amount}" -lt 0 ]; then
         barley_amount=0
     fi
-    if [ "$((RANDOM % 12))" -eq 0 ]; then
-        weather_index=$((RANDOM % ${#weather_options[@]}))
-    fi
 
     write_telemetry
     if [ "$((tick % WORLD_TICK_RATIO))" -eq 0 ]; then
         write_world
     fi
 
-    echo "[mock-bridge] Jahr ${year}, Tag ${day}/${days_per_month} (Monat ${month}), $(printf '%02d:%02d' "${hour}" "${minute}"), Kontostand ${money} EUR, Wetter ${weather_options[$weather_index]}"
+    echo "[mock-bridge] Jahr ${year}, Tag ${day}/${days_per_month} (Monat ${month}), $(printf '%02d:%02d' "${hour}" "${minute}"), Kontostand ${money} EUR"
 
     tick=$((tick + 1))
     sleep "${INTERVAL_SECONDS}"

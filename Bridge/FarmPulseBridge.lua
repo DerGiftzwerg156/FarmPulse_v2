@@ -7,8 +7,7 @@
     nach Aenderungsfrequenz, statt eines einzigen monolithischen Schnappschusses:
 
         - telemetry.json (alle POLL_INTERVAL_MS, schnelle "Puls"-Werte):
-          Uhrzeit, Spieltag/Monat/Jahr/Tage je Monat, Kontostand, FarmID,
-          Jahreszeit, Wetter
+          Uhrzeit, Spieltag/Monat/Jahr/Tage je Monat, Kontostand, FarmID
         - world.json (alle WORLD_POLL_INTERVAL_MS, seltener - "was mir gehoert"):
           Feld-/Farmland-Informationen fuer ALLE Farmlands der Karte, aggregierter
           Fuhrpark-Wert, Lager-/Silobestaende
@@ -22,7 +21,7 @@
     gehalten; die eigentliche Verarbeitungs-/Serialisierungslogik steckt in den
     testbaren, GIANTS-unabhaengigen Modulen unter scripts/ (JsonEncoder,
     PollTimer, FieldCollector, VehicleCollector, StorageCollector,
-    WeatherCollector, FarmCollector, WorldCollector, TelemetryCollector).
+    FarmCollector, WorldCollector, TelemetryCollector).
 
     Bewusst NICHT exportiert (siehe README.md fuer die Begruendung je Kategorie):
     Fahrzeugzustand (Tank/Verschleiss - beobachtet der Spieler selbst im Spiel),
@@ -32,7 +31,7 @@
     ACHTUNG - unbestaetigtes Kategorie-C-Wissen: Die konkreten FS25-Engine-Aufrufe
     unten (welches Objekt haelt den Kontostand, in welcher Einheit liegt die
     Tageszeit vor, wie heissen Tag/Monat/Jahr/Feldliste auf Environment- bzw.
-    FarmlandManager-Ebene, wie werden Fahrzeuge/Lagerbestaende/Wetter gelesen)
+    FarmlandManager-Ebene, wie werden Fahrzeuge/Lagerbestaende gelesen)
     sind ein fundierter, aber NICHT im laufenden Spiel bestaetigter Entwurf,
     abgeleitet aus oeffentlich dokumentierten GIANTS-Engine-Mustern
     (Community-LUADOC, vergleichbare Open-Source-Telemetrie-/Finanz-Mods).
@@ -40,12 +39,7 @@
     Fallback-Strategien abgesichert, damit ein einzelner falscher API-Name
     nicht die gesamte Bridge zum Absturz bringt, sondern nur einen
     Platzhalterwert (0, "unknown" bzw. eine leere Liste) liefert und eine
-    Warnung in log.txt hinterlaesst. Fuer "weather" gilt das in besonderem
-    Masse: Weather.lua/WeatherForecast.lua/Environment.lua werden von GIANTS
-    weder im offiziellen SDK-Dump noch in der Community-LUADOC veroeffentlicht
-    - hierfuer existiert schlicht keine oeffentliche Quelle mit echtem
-    Engine-Quellcode, der Wert bleibt daher bis zum ersten Live-Test am
-    unsichersten (siehe README.md, Abschnitt "Wichtiger Hinweis").
+    Warnung in log.txt hinterlaesst.
     Bitte nach dem ersten Testlauf im Spiel log.txt pruefen (siehe README.md,
     Abschnitt "Test-Feedback-Loop").
 
@@ -73,7 +67,6 @@ source(modDirectory .. "scripts/PollTimer.lua")
 source(modDirectory .. "scripts/FieldCollector.lua")
 source(modDirectory .. "scripts/VehicleCollector.lua")
 source(modDirectory .. "scripts/StorageCollector.lua")
-source(modDirectory .. "scripts/WeatherCollector.lua")
 source(modDirectory .. "scripts/FarmCollector.lua")
 source(modDirectory .. "scripts/WorldCollector.lua")
 source(modDirectory .. "scripts/TelemetryCollector.lua")
@@ -264,40 +257,6 @@ function FarmPulseBridge.readFarmlands()
     return raw
 end
 
---- Liest den aktuellen Wetterzustand.
---
--- UNBESTAETIGT (siehe README.md und Dateikommentar oben): Weather.lua/
--- WeatherForecast.lua/Environment.lua werden von GIANTS in keiner der drei
--- sonst genutzten Quellen veroeffentlicht - es gibt schlicht keine Quelle mit
--- echtem Engine-Quellcode dafuer. Die Strategien unten sind plausible, aber
--- unbestaetigte Vermutungen (verbreitete Feldnamen in Community-Wetter-Mods),
--- ausdruecklich der unsicherste Wert dieser Bridge.
--- @return roher Wetter-String (oder nil, falls keine Strategie griff)
-function FarmPulseBridge.readWeather()
-    local mission = getMission()
-
-    -- Strategie 1 (unbestaetigt): verschachtelter Typname auf einem
-    -- "weather"-Unterobjekt des Environments.
-    local ok, result = pcall(function()
-        return mission.environment.weather.type.name
-    end)
-    if ok and type(result) == "string" then
-        return result, "environment.weather.type.name"
-    end
-
-    -- Strategie 2 (unbestaetigt): flacher Typ-Bezeichner direkt auf dem
-    -- Environment.
-    ok, result = pcall(function()
-        return mission.environment.currentWeatherType
-    end)
-    if ok and type(result) == "string" then
-        return result, "environment.currentWeatherType"
-    end
-
-    FarmPulseBridge.log("WARNUNG: Konnte Wetter ueber keine bekannte API lesen - exportiere 'unknown'.")
-    return nil, "fallback-unknown"
-end
-
 --- Liest den Hofnamen der aktuellen Farm.
 -- Strategie 1 ist gegen einen echten, veroeffentlichten Mod bestaetigt (siehe
 -- README.md): FS25_InfoDisplayExtension liest `owningFarm.name` auf demselben
@@ -430,7 +389,6 @@ function FarmPulseBridge.exportTelemetry()
     local hour, minute, day, month, year, daysPerMonth = FarmPulseBridge.readCalendar()
     local money = FarmPulseBridge.readMoney()
     local farmId = FarmPulseBridge.readFarmId()
-    local rawWeather = FarmPulseBridge.readWeather()
 
     local payload = TelemetryCollector.buildPayload({
         hour = hour,
@@ -441,8 +399,6 @@ function FarmPulseBridge.exportTelemetry()
         daysPerMonth = daysPerMonth,
         money = money,
         farmId = farmId,
-        season = WeatherCollector.seasonFromMonth(month),
-        weather = WeatherCollector.normalizeWeather(rawWeather),
     })
 
     FarmPulseBridge.writeJsonFile(FarmPulseBridge.TELEMETRY_FILENAME, TelemetryCollector.toJson(payload))
