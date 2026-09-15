@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<modDesc descVersion="93">
+    <author>FarmPulse Project</author>
+    <version>2.0.0</version>
+
+    <title>
+        <de>FarmPulse Bridge</de>
+        <en>FarmPulse Bridge</en>
+    </title>
+
+    <description>
+        <de><![CDATA[FarmPulse Bridge verbindet deinen laufenden Betrieb mit der FarmPulse-Core-Anwendung. Die Bridge exportiert alle paar Sekunden einen umfangreichen Telemetrie-Schnappschuss als telemetry.json - Uhrzeit, Spieltag, Monat, Jahr, Tage je Monat, Kontostand, die FarmID deines Betriebs sowie Informationen zu allen Feldern der Karte (Besitzer anhand der FarmID, Groesse in Hektar, Feldpreis). Das FarmPulse-Dashboard zeigt diese Werte live an.]]></de>
+        <en><![CDATA[FarmPulse Bridge connects your running farm to the FarmPulse Core application. The bridge exports a rich telemetry snapshot as telemetry.json every few seconds - time of day, in-game day, month, year, days per month, account balance, your farm's FarmID, and information about every field on the map (owner by FarmID, size in hectares, field price). The FarmPulse dashboard displays these values live.]]></en>
+    </description>
+
+    <multiplayer supported="false" />
+
+    <storeItems>
+    </storeItems>
+
+    <extraSourceFiles>
+        <sourceFile filename="scripts/JsonEncoder.lua" />
+        <sourceFile filename="scripts/PollTimer.lua" />
+        <sourceFile filename="scripts/FieldCollector.lua" />
+        <sourceFile filename="scripts/TelemetryCollector.lua" />
+        <sourceFile filename="FarmPulseBridge.lua" />
+    </extraSourceFiles>
+</modDesc>
