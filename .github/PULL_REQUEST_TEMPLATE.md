@@ -10,6 +10,7 @@ ergaenzt, sobald sie im Repo existieren.
 -->
 
 - [ ] `Bridge` (FS-25 Bridge Mod)
+- [ ] `backend` (Spring-Boot-Backend)
 - [ ] `Tools` (Tools)
 - [ ] Doku (`README.md`, `CONTRIBUTING.md`, `<Bereich>/README.md`, ...)
 - [ ] Sonstiges: <!-- z.B. CI, .gitignore -->
@@ -52,8 +53,22 @@ Allgemein (gilt fuer jeden Bereich):
 
 </details>
 
+<details>
+<summary>Backend-spezifisch (nur falls <code>backend/</code> betroffen)</summary>
+
+- [ ] `mvn test` laeuft lokal ohne Fehlschlaege (inkl. Testcontainers-
+      Integrationstests, dafuer wird lokal Docker benoetigt).
+- [ ] Schema-Aenderungen erfolgen ausschliesslich ueber eine neue,
+      fortlaufend nummerierte Flyway-Migration unter
+      `backend/src/main/resources/db/migration/` - bestehende Migrationen
+      wurden nicht nachtraeglich geaendert.
+- [ ] `backend/README.md` aktualisiert, falls sich Konfiguration,
+      Datenmodell oder Architektur geaendert haben.
+
+</details>
+
 <!--
-Fuer weitere Bereiche (z.B. Backend, WebDashboard) hier analog einen
-eigenen <details>-Block mit bereichsspezifischer Checkliste ergaenzen,
-sobald der Bereich im Repo existiert.
+Fuer weitere Bereiche (z.B. WebDashboard) hier analog einen eigenen
+<details>-Block mit bereichsspezifischer Checkliste ergaenzen, sobald der
+Bereich im Repo existiert.
 -->
