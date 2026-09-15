@@ -4,11 +4,8 @@
 
 ## Betroffene Bereiche
 
-- [ ] `Bridge/FarmPulseBridge.lua` (Engine-Glue)
-- [ ] `Bridge/scripts/*.lua` (testbare Logikmodule)
-- [ ] `Bridge/tests/*`
-- [ ] `Bridge/modDesc.xml`
-- [ ] `Tools/mock-bridge.sh`
+- [ ] `Bridge` (FS-25 Bridge Mod)
+- [ ] `Tools` (Tools)
 - [ ] Doku (`README.md`, `Bridge/README.md`, ...)
 - [ ] Sonstiges: <!-- z.B. CI, .gitignore -->
 
