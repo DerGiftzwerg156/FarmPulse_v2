@@ -6,7 +6,10 @@
 CREATE TABLE field_snapshot (
     id                  BIGINT         NOT NULL AUTO_INCREMENT,
     world_snapshot_id   BIGINT         NOT NULL,
-    list_index          INT            NOT NULL,
+    -- DEFAULT 0 noetig: Hibernate befuellt diese von @OrderColumn verwaltete
+    -- Spalte bei einer "mappedBy"-Collection erst per nachtraeglichem UPDATE
+    -- nach dem initialen INSERT.
+    list_index          INT            NOT NULL DEFAULT 0,
     field_id            INT            NOT NULL,
     owner_farm_id       INT            NOT NULL,
     -- DOUBLE statt DECIMAL, da FieldSnapshot.sizeHa ein Java "double" ist -
