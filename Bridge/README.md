@@ -50,9 +50,23 @@ Die konkreten Engine-API-Aufrufe wurden gegen drei Quellen abgeglichen:
 | Monat | `g_currentMission.environment.currentMonth` (1-12) | **Bestaetigt** (Quelle 3, produktiv validiert) |
 | Jahr | `g_currentMission.environment.currentYear` | **Bestaetigt** (Quelle 3, produktiv validiert) |
 | Tage je Monat | `g_currentMission.environment.daysPerPeriod` | **Bestaetigt** (Quelle 2): direktes Feld, referenziert in `AbstractMission:setDefaultEndDate()` |
-| FarmID | `g_localPlayer.farmId`, Fallback `g_currentMission:getFarmId()` | **Bestaetigt** (Quelle 2): `AbstractMission:update()` prueft `g_localPlayer.farmId == self.farmId` direkt gegen ein echtes Feld. `getFarmId()` bleibt als unbestaetigter, aber in der Community weit verbreiteter Fallback |
-| Kontostand | `g_farmManager:getFarmById(farmId):getBalance()`, Fallback `g_currentMission:getMoney()` | **Bestaetigt** (Quelle 1): `Farm.md` zeigt die dokumentierte Methode `Farm:getBalance()`. Ein rohes `.money`-Feld ist NICHT dokumentiert und wird deshalb nicht mehr verwendet (Korrektur gegenueber einer fruehen Fassung dieser Bridge) |
+| FarmID | `g_localPlayer.farmId`, Fallback `g_currentMission:getFarmId()` | **Bestaetigt** (Quelle 2, zusaetzlich gestuetzt durch Quelle 1): `AbstractMission:update()` prueft `g_localPlayer.farmId == self.farmId` direkt gegen ein echtes Feld. Unabhaengig davon zeigt `Player.md` in der Community-LUADOC (Quelle 1) in `Player.createServerInstance()` den Quellcode `self.farmId = farmId`, durchgaengig verwendet (u.a. `g_farmManager:getSpawnPoint(self.farmId)`) - dasselbe Feld auf derselben Klassenfamilie, unabhaengig bestaetigt. `getFarmId()` bleibt als unbestaetigter, aber in der Community weit verbreiteter Fallback |
+| Kontostand | `g_farmManager:getFarmById(farmId):getBalance()`, Fallback `g_currentMission:getMoney()` | **Bestaetigt** (Quelle 1): `Farm.md` zeigt die dokumentierte Methode `Farm:getBalance()` ("Get the current account balance of the farm", keine Argumente). Ein rohes `.money`-Feld ist NICHT dokumentiert und wird deshalb nicht mehr verwendet (Korrektur gegenueber einer fruehen Fassung dieser Bridge). `getFarmById()` selbst ist in `FarmManager.md` ("Get the farm object by given farmId") ebenfalls dokumentiert |
 | Feldliste | `g_farmlandManager:getFarmlands()`, je Eintrag `.id`/`.farmId`/`.areaInHa`/`.price` | **Bestaetigt** (Quelle 1): `FarmlandManager.md` zeigt `getFarmlands()` liefert `self.farmlands` (eine per Farmland-ID indizierte Tabelle - daher `pairs()` statt einer 1-indizierten Sequenz), und `Farmland.md` zeigt in `Farmland:load()` den Quellcode, der genau diese vier Felder setzt (Default-Besitzer `FarmlandManager.NO_OWNER_FARM_ID`, laut `getFarmlandOwner()`-Doku `0`) |
+
+Ein vollstaendiger erneuter Abgleich aller Werte ausschliesslich gegen die
+Community-LUADOC (Quelle 1) bestaetigt: Diese deckt weiterhin **keine**
+`Mission`/`BaseMission`- oder `Environment`-Klassenseite ab (auch nicht
+unter den Kategorien "Base" oder "Misc", die dafuer naheliegend waeren, und
+nicht unter `getMoney`, `getDayInPeriodFromDay`, `currentMonth`, `currentYear`,
+`daysPerPeriod` oder `dayTime` als Funktionsnamen) - `mission:getFarmId()`,
+`mission:getMoney()` und saemtliche Environment-/Kalenderfelder bleiben also
+ausschliesslich durch Quelle 2 bzw. 3 belegt, nicht durch Quelle 1. Ebenso
+undokumentiert in Quelle 1: `Utils.appendedFunction()` und die `Mission00`-
+Klasse (der Aktivierungs-Hook der Bridge) - dieser Mechanismus ist stattdessen
+bereits durch echte In-Game-Testlaeufe des urspruenglichen Bridge-Prototyps
+empirisch bestaetigt (siehe Git-Historie), was staerker wiegt als jede
+statische Dokumentation.
 
 Damit sind mittlerweile alle exportierten Werte gegen mindestens eine
 Quelle mit echtem Engine-Quellcode (nicht nur Signaturlisten) abgeglichen.
