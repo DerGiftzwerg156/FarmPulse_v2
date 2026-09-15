@@ -6,7 +6,7 @@ Austauschordner, den FarmPulse Core ausliest - aufgeteilt nach
 Aenderungsfrequenz statt eines einzigen monolithischen Schnappschusses:
 
 - **`telemetry.json`** (alle paar Sekunden, schnelle "Puls"-Werte): Uhrzeit,
-  Spieltag/Monat/Jahr/Tage je Monat, Kontostand, FarmID, Jahreszeit, Wetter.
+  Spieltag/Monat/Jahr/Tage je Monat, Kontostand, FarmID.
 - **`world.json`** (seltener, "was mir gehoert" jenseits des Kontostands):
   Feld-/Farmland-Informationen fuer **alle** Felder der Karte, aggregierter
   Fuhrpark-Wert, Lager-/Silobestaende.
@@ -41,8 +41,7 @@ abgeglichen:
    direkt aus dem Spiel extrahiert, aber nur Klassen erfasst, deren Methoden
    einem bestimmten Registrierungsmuster folgen (eine eigene Seite fuer die
    `Environment`-Klasse existiert dort trotz eines (veralteten/gebrochenen)
-   Verweises aus Quelle 3 nachweislich nicht - mehrfach gezielt gesucht; siehe
-   auch weiter unten, "Wetter").
+   Verweises aus Quelle 3 nachweislich nicht - mehrfach gezielt gesucht).
 2. Die **offizielle [GDN-Dokumentation](https://gdn.giants-software.com/documentation_scripting_fs25.php)**
    (`gdn.giants-software.com`) selbst - aus dieser Entwicklungsumgebung heraus
    per Netzwerk-Policy nicht direkt erreichbar, aber die Seite fuer die Klasse
@@ -54,7 +53,7 @@ abgeglichen:
    veroeffentlichte Mod (UsedPlus, Version 2.6.0) validiert, mit
    Datei-/Zeilenbelegen aus deren Quellcode (z.B. `CreditSystem.lua:223-227`).
 
-Fuer die neu hinzugekommenen Werte (Wetter/Jahreszeit, Hofname, Spielername,
+Fuer die neu hinzugekommenen Werte (Hofname, Spielername,
 Fuhrpark-Wert, Lagerbestaende) kamen zusaetzlich vier echte, aktuell
 veroeffentlichte FS25-Mods als Quellen dazu (recherchiert per Web-Suche, da
 weder GDN noch die Community-LUADOC diese Bereiche abdecken - siehe Tabelle
@@ -75,8 +74,6 @@ unten fuer Details je Wert):
 | FarmID | `g_localPlayer.farmId`, Fallback `g_currentMission:getFarmId()` | **Bestaetigt** (Quelle 2, zusaetzlich gestuetzt durch Quelle 1): `AbstractMission:update()` prueft `g_localPlayer.farmId == self.farmId` direkt gegen ein echtes Feld. Unabhaengig davon zeigt `Player.md` in der Community-LUADOC (Quelle 1) in `Player.createServerInstance()` den Quellcode `self.farmId = farmId`, durchgaengig verwendet (u.a. `g_farmManager:getSpawnPoint(self.farmId)`) - dasselbe Feld auf derselben Klassenfamilie, unabhaengig bestaetigt. `getFarmId()` bleibt als unbestaetigter, aber in der Community weit verbreiteter Fallback |
 | Kontostand | `g_farmManager:getFarmById(farmId):getBalance()`, Fallback `g_currentMission:getMoney()` | **Bestaetigt** (Quelle 1): `Farm.md` zeigt die dokumentierte Methode `Farm:getBalance()` ("Get the current account balance of the farm", keine Argumente). Ein rohes `.money`-Feld ist NICHT dokumentiert und wird deshalb nicht mehr verwendet (Korrektur gegenueber einer fruehen Fassung dieser Bridge). `getFarmById()` selbst ist in `FarmManager.md` ("Get the farm object by given farmId") ebenfalls dokumentiert |
 | Feldliste | `g_farmlandManager:getFarmlands()`, je Eintrag `.id`/`.farmId`/`.areaInHa`/`.price` | **Bestaetigt** (Quelle 1): `FarmlandManager.md` zeigt `getFarmlands()` liefert `self.farmlands` (eine per Farmland-ID indizierte Tabelle - daher `pairs()` statt einer 1-indizierten Sequenz), und `Farmland.md` zeigt in `Farmland:load()` den Quellcode, der genau diese vier Felder setzt (Default-Besitzer `FarmlandManager.NO_OWNER_FARM_ID`, laut `getFarmlandOwner()`-Doku `0`) |
-| Jahreszeit (`season`) | reine Berechnung aus dem bereits bestaetigten Monatsfeld (1-12), **kein** zusaetzlicher Engine-Zugriff (siehe `WeatherCollector.seasonFromMonth`) | **Bestaetigt** (folgt direkt aus dem oben bestaetigten Monatsfeld - keine neue, unbestaetigte Engine-Abhaengigkeit noetig) |
-| Wetter (`weather`) | Zwei Strategien: `environment.weather.type.name`, Fallback `environment.currentWeatherType` | **UNBESTAETIGT - die groesste verbleibende Unsicherheit im gesamten Mod**: GIANTS veroeffentlicht `Weather.lua`/`WeatherForecast.lua`/`Environment.lua` nachweislich weder im offiziellen SDK-Dump noch in Quelle 1 ("FS25 withholds Weather.lua, WeatherForecast.lua and Environment.lua from the SDK dump, the Community LUADOC and FS25-lua-scripting") - dafuer existiert schlicht **keine** oeffentliche Quelle mit echtem Engine-Quellcode. Beide Strategien oben sind plausible, aber unbestaetigte Vermutungen anhand verbreiteter Feldnamen in Community-Wetter-Mods. Ein GDN-Forumsthread genau zu dieser Frage existiert ("Where do i find the contents of all owned silos/storage?" behandelt zwar primaer Lager, angrenzende Threads zu Environment/Weather ebenso), war aber durch die Netzwerk-Policy dieser Entwicklungsumgebung (`gdn.giants-software.com` blockiert) nicht abrufbar. Fallback bei Fehlschlag beider Strategien: `"unknown"` |
 | Hofname (`farmName`) | `g_farmManager:getFarmById(farmId).name` | **Bestaetigt** (Quelle 4, FS25_InfoDisplayExtension, echter veroeffentlichter Mod): liest `owningFarm.name` auf demselben Farm-Objekt, das diese Bridge bereits fuer `getBalance()` verwendet |
 | Spielername (`playerName`) | `g_currentMission.playerNickname` | **Bestaetigt** (Quelle 5, FS25_Tardis, echter veroeffentlichter Mod): referenziert dieses Feld direkt |
 | Fuhrpark-Wert (`fleetValue`) | `g_currentMission.vehicleSystem.vehicles` (Liste aller Fahrzeuge), je Eintrag `vehicle:getOwnerFarmId()` zum Filtern + `vehicle:getSellPrice()`, aufsummiert | **Bestaetigt** (Quelle 5, FS25_Tardis, und ein weiterer veroeffentlichter Mod, FS25_VehicleExplorer von teknogeek, fuer `g_currentMission.vehicleSystem.vehicles` als Fahrzeugliste dieser FS25-Engine-Generation - abgeloest gegenueber `g_currentMission.vehicles` aus FS19-FS22 -, Quelle 6 fuer `Vehicle:getSellPrice()` als real gehookte Methode). Bewusst nur der aggregierte Wert, keine Einzelfahrzeug-Details (siehe Einleitung) |
@@ -103,12 +100,6 @@ Bridge abstuerzt. Das Verhalten laesst sich also risikofrei ausprobieren.
 
 ### Bekannte Luecken (Stand jetzt, vor dem ersten Live-Test)
 
-- **Wetter** ist wie oben beschrieben die groesste Unsicherheit - beide
-  Strategien in `FarmPulseBridge.readWeather()` sind unbestaetigt. Sollte
-  `weather` im Live-Test dauerhaft `"unknown"` liefern, muessen die
-  Feldnamen anhand von `log.txt`-Warnungen und ggf. eines Daten-Dump-Mods
-  (siehe z.B. "Developer PowerTools" im Modhub) live im Spiel ermittelt
-  werden.
 - **Lagerbestaende** decken bestaetigt nur Produktionspunkte ab (Fabriken,
   Verarbeitungsanlagen), noch nicht zwingend frei platzierte Hof-Silos. Falls
   `storages` im Live-Test dauerhaft leer bleibt oder erkennbar unvollstaendig
@@ -133,22 +124,18 @@ Bridge abstuerzt. Das Verhalten laesst sich also risikofrei ausprobieren.
    `world.json`, `farm.json`) tatsaechlich entstehen und ob
    `money`/`farmId`/`hour`/`minute` mit dem, was im Spiel angezeigt wird,
    uebereinstimmen.
-5. Pruefen, ob `day`/`month`/`year`/`daysPerMonth` sowie die daraus
-   berechnete `season` mit der im Spiel angezeigten Kalenderanzeige
-   uebereinstimmen.
-6. Pruefen, ob `weather` einen plausiblen, sich ueber die Zeit aenderenden
-   Wert liefert (nicht dauerhaft `"unknown"`) - siehe "Bekannte Luecken"
-   oben, falls nicht.
-7. In `world.json` pruefen, ob `fields` eine plausible Anzahl Eintraege
+5. Pruefen, ob `day`/`month`/`year`/`daysPerMonth` mit der im Spiel
+   angezeigten Kalenderanzeige uebereinstimmen.
+6. In `world.json` pruefen, ob `fields` eine plausible Anzahl Eintraege
    enthaelt (Anzahl Felder der geladenen Karte) und ob Groesse/Preis/Besitzer
    fuer ein paar bekannte, bereits gekaufte Felder mit der Ingame-Kartenansicht
    uebereinstimmen.
-8. In `world.json` pruefen, ob `fleetValue` grob zur Anzahl/Klasse der
+7. In `world.json` pruefen, ob `fleetValue` grob zur Anzahl/Klasse der
    eigenen Fahrzeuge passt, und ob `storages` bekannte Lagerbestaende
    (zumindest aus Produktionspunkten) korrekt widerspiegelt.
-9. In `farm.json` pruefen, ob `farmName`/`playerName` mit dem im Spiel
+8. In `farm.json` pruefen, ob `farmName`/`playerName` mit dem im Spiel
    gewaehlten Hof-/Spielernamen uebereinstimmen.
-10. Diese Beobachtungen (Log-Auszug + ob die Werte stimmen, je Datei) 
+9. Diese Beobachtungen (Log-Auszug + ob die Werte stimmen, je Datei) 
     zurueckmelden - weicht z.B. `hour`/`minute` sichtbar ab, muss vermutlich
     nur die Umrechnung in `FarmPulseBridge.readCalendar()` angepasst werden;
     liefert `fields` immer eine leere Liste, ist entweder der Managername
@@ -191,9 +178,7 @@ Bridge abstuerzt. Das Verhalten laesst sich also risikofrei ausprobieren.
   "year": 2,
   "daysPerMonth": 3,
   "money": 84250,
-  "farmId": 1,
-  "season": "summer",
-  "weather": "sun"
+  "farmId": 1
 }
 ```
 
@@ -210,11 +195,6 @@ sondern per JSON-Parser auf die benannten Felder zugreifen.
 - `money`: aktueller Kontostand des Spieler-Betriebs (kann negativ sein).
 - `farmId`: FarmID des aktuellen Spielers - identifiziert, welcher
   `ownerFarmId`-Wert in `world.json`/`fields` "mir gehoert".
-- `season`: Jahreszeit, rein aus `month` berechnet - `"winter"`, `"spring"`,
-  `"summer"` oder `"autumn"`.
-- `weather`: aktueller Wetterzustand als roher, unbestaetigter Engine-String
-  (siehe "Wichtiger Hinweis" oben), oder `"unknown"`, falls kein Zugriff
-  moeglich war.
 
 ## Dateiformat: `world.json`
 
@@ -274,7 +254,6 @@ Bridge/
     ├── FieldCollector.lua       Normalisierung der Feld-/Farmland-Liste (keine GIANTS-Abhaengigkeit)
     ├── VehicleCollector.lua     Aggregation des Fuhrpark-Werts (keine GIANTS-Abhaengigkeit)
     ├── StorageCollector.lua     Normalisierung/Aggregation der Lagerbestaende (keine GIANTS-Abhaengigkeit)
-    ├── WeatherCollector.lua     Jahreszeit-Berechnung + Wetter-Normalisierung (keine GIANTS-Abhaengigkeit)
     ├── FarmCollector.lua        Normalisierung + Payload-Aufbau fuer farm.json (keine GIANTS-Abhaengigkeit)
     ├── WorldCollector.lua       Normalisierung + Payload-Aufbau fuer world.json (keine GIANTS-Abhaengigkeit)
     └── TelemetryCollector.lua   Normalisierung + Payload-Aufbau fuer telemetry.json (keine GIANTS-Abhaengigkeit)
@@ -297,10 +276,10 @@ cd Bridge
 lua tests/run_tests.lua
 ```
 
-Erwartete Ausgabe: alle Tests `[ OK ]`, am Ende `79 bestanden, 0
+Erwartete Ausgabe: alle Tests `[ OK ]`, am Ende `68 bestanden, 0
 fehlgeschlagen` (16 JsonEncoder, 9 PollTimer, 8 FieldCollector,
-6 VehicleCollector, 7 StorageCollector, 8 WeatherCollector, 6 FarmCollector,
-6 WorldCollector, 13 TelemetryCollector). `FarmPulseBridge.lua` selbst hat
+6 VehicleCollector, 7 StorageCollector, 6 FarmCollector,
+6 WorldCollector, 10 TelemetryCollector). `FarmPulseBridge.lua` selbst hat
 bewusst **keine** automatisierten Tests - es enthaelt ausschliesslich
 GIANTS-Engine-Aufrufe, die sich ausserhalb des laufenden Spiels nicht
 sinnvoll pruefen lassen (siehe Abschnitt "Test-Feedback-Loop" oben).

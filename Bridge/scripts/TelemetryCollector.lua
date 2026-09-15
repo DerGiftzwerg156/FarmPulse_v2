@@ -4,7 +4,7 @@
     Reine Verarbeitungslogik: nimmt rohe, bereits aus der GIANTS-Engine gelesene
     Werte entgegen (siehe FarmPulseBridge.lua fuer die eigentlichen Engine-
     Zugriffe) und baut daraus die telemetry.json-Nutzlast - die "schnellen",
-    sich haeufig aendernden Werte (Uhrzeit, Kontostand, Wetter). Besitz/
+    sich haeufig aendernden Werte (Uhrzeit, Kontostand). Besitz/
     Vermoegen (Felder, Fuhrpark, Lager) wandert seit der Aufteilung in mehrere
     Austauschdateien in world.json (siehe WorldCollector.lua), Betriebs-/
     Spieleridentitaet in farm.json (siehe FarmCollector.lua):
@@ -17,9 +17,7 @@
           "year": 2,
           "daysPerMonth": 3,
           "money": 84250,
-          "farmId": 1,
-          "season": "summer",
-          "weather": "sun"
+          "farmId": 1
         }
 
     Die Trennung von "rohe Engine-Werte lesen" (unsicher, siehe FarmPulseBridge.lua)
@@ -28,8 +26,7 @@
     einfachen `lua`-Interpreter getestet werden (siehe
     tests/test_telemetry_collector.lua).
 
-    Benoetigt JsonEncoder fuer die eigentliche Serialisierung; "season"/"weather"
-    werden dabei als bereits ueber WeatherCollector normalisierte Strings erwartet.
+    Benoetigt JsonEncoder fuer die eigentliche Serialisierung.
 ]]
 
 TelemetryCollector = {}
@@ -70,18 +67,9 @@ function TelemetryCollector.normalizeMinute(rawMinute)
     return minute
 end
 
-local function normalizeStringOrUnknown(value)
-    if type(value) ~= "string" or value == "" then
-        return "unknown"
-    end
-    return value
-end
-
 --- Baut aus rohen Eingabewerten eine validierte, normalisierte Telemetrie-Nutzlast.
 -- @param rawState Tabelle mit den Feldern hour, minute, day, month, year,
---        daysPerMonth, money, farmId, season, weather (season/weather werden
---        als bereits ueber WeatherCollector normalisierte Strings erwartet -
---        die Typpruefung hier ist nur ein zusaetzliches Sicherheitsnetz)
+--        daysPerMonth, money, farmId
 -- @return normalisierte Tabelle mit denselben Feldern, bereit fuer toJson()
 function TelemetryCollector.buildPayload(rawState)
     rawState = rawState or {}
@@ -95,8 +83,6 @@ function TelemetryCollector.buildPayload(rawState)
         daysPerMonth = toNonNegativeInt(rawState.daysPerMonth),
         money = toInt(rawState.money),
         farmId = toNonNegativeInt(rawState.farmId),
-        season = normalizeStringOrUnknown(rawState.season),
-        weather = normalizeStringOrUnknown(rawState.weather),
     }
 end
 
@@ -112,8 +98,6 @@ function TelemetryCollector.toJson(payload)
         { key = "daysPerMonth", value = payload.daysPerMonth },
         { key = "money", value = payload.money },
         { key = "farmId", value = payload.farmId },
-        { key = "season", value = payload.season },
-        { key = "weather", value = payload.weather },
     })
 end
 

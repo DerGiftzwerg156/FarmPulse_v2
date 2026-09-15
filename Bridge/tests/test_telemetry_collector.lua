@@ -42,8 +42,6 @@ return function()
             daysPerMonth = 3,
             money = 84250,
             farmId = 1,
-            season = "summer",
-            weather = "sun",
         })
         testkit.assertEquals(8, payload.hour)
         testkit.assertEquals(30, payload.minute)
@@ -53,8 +51,6 @@ return function()
         testkit.assertEquals(3, payload.daysPerMonth)
         testkit.assertEquals(84250, payload.money)
         testkit.assertEquals(1, payload.farmId)
-        testkit.assertEquals("summer", payload.season)
-        testkit.assertEquals("sun", payload.weather)
     end)
 
     testkit.run("buildPayload: erlaubt negativen Kontostand", function()
@@ -62,24 +58,10 @@ return function()
         testkit.assertEquals(-500, payload.money)
     end)
 
-    testkit.run("buildPayload: fehlende/ungueltige season/weather werden zu 'unknown'", function()
-        local payload = TelemetryCollector.buildPayload({ season = nil, weather = 42 })
-        testkit.assertEquals("unknown", payload.season)
-        testkit.assertEquals("unknown", payload.weather)
-    end)
-
-    testkit.run("buildPayload: leerer season/weather-String wird zu 'unknown'", function()
-        local payload = TelemetryCollector.buildPayload({ season = "", weather = "" })
-        testkit.assertEquals("unknown", payload.season)
-        testkit.assertEquals("unknown", payload.weather)
-    end)
-
     testkit.run("buildPayload: fehlender rawState wird wie leere Tabelle behandelt", function()
         local payload = TelemetryCollector.buildPayload(nil)
         testkit.assertEquals(0, payload.hour)
         testkit.assertEquals(0, payload.money)
-        testkit.assertEquals("unknown", payload.season)
-        testkit.assertEquals("unknown", payload.weather)
     end)
 
     testkit.run("toJson: liefert das erwartete Format", function()
@@ -92,21 +74,9 @@ return function()
             daysPerMonth = 3,
             money = 84250,
             farmId = 1,
-            season = "summer",
-            weather = "sun",
         })
         testkit.assertEquals(
-            '{"hour":8,"minute":30,"day":4,"month":6,"year":2,"daysPerMonth":3,"money":84250,"farmId":1,'
-                .. '"season":"summer","weather":"sun"}',
-            TelemetryCollector.toJson(payload)
-        )
-    end)
-
-    testkit.run("toJson: 'unknown' wird wie jeder andere String kodiert", function()
-        local payload = TelemetryCollector.buildPayload({ money = 100, farmId = 1 })
-        testkit.assertEquals(
-            '{"hour":0,"minute":0,"day":0,"month":0,"year":0,"daysPerMonth":0,"money":100,"farmId":1,'
-                .. '"season":"unknown","weather":"unknown"}',
+            '{"hour":8,"minute":30,"day":4,"month":6,"year":2,"daysPerMonth":3,"money":84250,"farmId":1}',
             TelemetryCollector.toJson(payload)
         )
     end)
