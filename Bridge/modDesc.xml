@@ -24,6 +24,7 @@
         <sourceFile filename="scripts/FieldCollector.lua" />
         <sourceFile filename="scripts/VehicleCollector.lua" />
         <sourceFile filename="scripts/StorageCollector.lua" />
+        <sourceFile filename="scripts/PriceCollector.lua" />
         <sourceFile filename="scripts/FarmCollector.lua" />
         <sourceFile filename="scripts/WorldCollector.lua" />
         <sourceFile filename="scripts/TelemetryCollector.lua" />
