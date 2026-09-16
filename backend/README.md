@@ -17,7 +17,6 @@ backend/
     │   └── BridgeExchangeProperties.java   Konfiguration: Austauschordner + Poll-Intervalle
     ├── ingest/
     │   ├── IngestScheduler.java             @Scheduled-Jobs, ein Intervall je Datei
-    │   ├── IngestController.java            POST /api/ingest/trigger - einmaliger manueller Durchlauf
     │   ├── dto/                             Rohabbild der drei JSON-Dateien (1:1 zum Bridge-Format)
     │   └── service/
     │       ├── ExchangeFileReader.java      Liest eine Austauschdatei, wenn sie sich (per mtime) geaendert hat
@@ -50,8 +49,8 @@ Fuer jede der drei Dateien laeuft (via `IngestScheduler`, Standardintervalle an
    abgebildet und gespeichert - `telemetry.json`/`world.json` als historisierte Zeitreihe
    (eine Zeile je tatsaechlicher Aenderung), `farm.json` als Update der Stammdaten der Farm.
 
-Zusaetzlich zum Scheduler kann `POST /api/ingest/trigger` einen Durchlauf aller drei
-Ingest-Services manuell anstossen (z.B. fuer Tests, direkt nach dem Start).
+Die Ingest-Services sind bewusst ausschliesslich ueber `IngestScheduler` erreichbar -
+kein manueller REST-Trigger.
 
 ### Bekannte Einschraenkung: eine aktive Farm pro Instanz
 
