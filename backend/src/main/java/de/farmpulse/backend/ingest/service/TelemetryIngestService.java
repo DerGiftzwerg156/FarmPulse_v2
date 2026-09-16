@@ -4,6 +4,7 @@ import de.farmpulse.backend.config.BridgeExchangeProperties;
 import de.farmpulse.backend.domain.Farm;
 import de.farmpulse.backend.domain.TelemetrySnapshot;
 import de.farmpulse.backend.ingest.dto.TelemetryData;
+import de.farmpulse.backend.ingest.event.FarmCreatedEvent;
 import de.farmpulse.backend.processing.TelemetryProcessingStep;
 import de.farmpulse.backend.repository.FarmRepository;
 import de.farmpulse.backend.repository.TelemetrySnapshotRepository;
@@ -12,6 +13,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,17 +37,19 @@ public class TelemetryIngestService {
     private final TelemetryProcessingStep processingStep;
     private final FarmRepository farmRepository;
     private final TelemetrySnapshotRepository snapshotRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     private final AtomicReference<Instant> lastProcessedAt = new AtomicReference<>();
 
     public TelemetryIngestService(BridgeExchangeProperties properties, ExchangeFileReader fileReader,
             TelemetryProcessingStep processingStep, FarmRepository farmRepository,
-            TelemetrySnapshotRepository snapshotRepository) {
+            TelemetrySnapshotRepository snapshotRepository, ApplicationEventPublisher eventPublisher) {
         this.properties = properties;
         this.fileReader = fileReader;
         this.processingStep = processingStep;
         this.farmRepository = farmRepository;
         this.snapshotRepository = snapshotRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -74,6 +78,9 @@ public class TelemetryIngestService {
                     return farmRepository.save(new Farm(data.farmId(), now));
                 });
         log.debug("Farm {}: id={}", farmNeuAngelegt[0] ? "neu angelegt" : "aktualisiert", farm.getId());
+        if (farmNeuAngelegt[0]) {
+            eventPublisher.publishEvent(new FarmCreatedEvent(farm));
+        }
 
         TelemetrySnapshot snapshot = new TelemetrySnapshot(
                 farm,
