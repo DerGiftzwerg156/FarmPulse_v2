@@ -32,7 +32,7 @@ logging:
 # wenn das Backend aus dem backend/-Ordner heraus gestartet wird.
 farmpulse:
   bridge:
-    exchange-dir: ${FARMPULSE_BRIDGE_EXCHANGE_DIR:../mock-exchange}
+    exchange-dir: ${FARMPULSE_BRIDGE_EXCHANGE_DIR:./mock-exchange}
     # angelehnt an FarmPulseBridge.POLL_INTERVAL_MS (siehe Bridge/FarmPulseBridge.lua)
     telemetry-interval-ms: ${FARMPULSE_TELEMETRY_INTERVAL_MS:5000}
     # angelehnt an FarmPulseBridge.WORLD_POLL_INTERVAL_MS
