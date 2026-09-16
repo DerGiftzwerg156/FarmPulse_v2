@@ -90,6 +90,20 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- Mockitos Inline-Mock-Maker (ByteBuddy) kennt neuere JDKs teils
+                         noch nicht offiziell (z.B. "Java 26 (70) is not supported by
+                         the current version of Byte Buddy") - dieses Flag aktiviert
+                         ByteBuddys experimentelle Unterstuetzung dafuer. Betrifft nur
+                         das lokale Ausfuehren der Tests mit einem neueren JDK als dem
+                         Projekt-Target (21); CI (JDK 21) braucht das Flag nicht,
+                         schadet dort aber auch nicht. -->
+                    <argLine>-Dnet.bytebuddy.experimental=true</argLine>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>
