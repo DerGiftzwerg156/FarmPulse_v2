@@ -41,3 +41,7 @@ jobs:
       - name: Backend-Tests ausfuehren
         working-directory: backend
         run: mvn --batch-mode test
+
+      - name: Backend-Docker-Image bauen
+        working-directory: backend
+        run: docker build -t farmpulse-backend:ci .

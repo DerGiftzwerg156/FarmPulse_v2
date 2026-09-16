@@ -20,3 +20,11 @@ run = "mvn test"
 description = "Backend lokal starten (liest standardmaessig ../mock-exchange)"
 dir = "backend"
 run = "mvn spring-boot:run"
+
+[tasks."docker-dev"]
+description = "Dev-MariaDB starten (Docker)"
+run = "docker compose -f Tools/docker-compose.dev.yml up -d"
+
+[tasks."docker-dev-backend"]
+description = "Dev-MariaDB + Backend containerisiert starten (Docker, baut das Backend-Image)"
+run = "docker compose -f Tools/docker-compose.dev.yml --profile backend up -d --build"

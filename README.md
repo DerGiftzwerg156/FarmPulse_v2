@@ -8,7 +8,7 @@ den Datenexport-Teil des Projekts:
 |---|---|
 | [`Bridge/`](Bridge/) | **FarmPulse Bridge** - der eigentliche FS25-Mod (Lua). Exportiert periodisch `telemetry.json`, `world.json` und `farm.json` in einen Austauschordner. Siehe [`Bridge/README.md`](Bridge/README.md) fuer Dateiformate, Architektur, Installation und Testlauf. |
 | [`backend/`](backend/) | **FarmPulse Backend** - Spring-Boot-Anwendung, die die drei Austauschdateien periodisch einliest und in MariaDB historisiert (Flyway-Migrationen fuer das Schema). Siehe [`backend/README.md`](backend/README.md) fuer Architektur, Konfiguration und lokale Entwicklung. |
-| [`Tools/`](Tools/) | Hilfsskripte fuer die Entwicklung, u.a. [`mock-bridge.sh`](Tools/mock-bridge.sh), das die Ausgabedateien der Bridge simuliert, ohne dass FS25 laufen muss. |
+| [`Tools/`](Tools/) | Hilfsskripte fuer die Entwicklung, u.a. [`mock-bridge.sh`](Tools/mock-bridge.sh) (simuliert die Bridge-Ausgabedateien ohne laufendes FS25) und [`docker-compose.dev.yml`](Tools/docker-compose.dev.yml) (lokale MariaDB + optional containerisiertes Backend). |
 
 Eine **FarmPulse Core**-Dashboard-Oberflaeche (die die im Backend historisierten Daten
 visualisiert) ist noch nicht Teil dieses Repos.
@@ -45,9 +45,15 @@ Diese Tests laufen auch automatisch in CI, siehe unten.
 ### Backend lokal starten
 
 ```bash
-cd backend
-docker compose up -d   # MariaDB
-mvn spring-boot:run    # liest standardmaessig ../mock-exchange
+docker compose -f Tools/docker-compose.dev.yml up -d   # MariaDB
+cd backend && mvn spring-boot:run                       # liest standardmaessig ../mock-exchange
+```
+
+Alternativ komplett containerisiert (Backend + MariaDB, siehe
+[`backend/README.md`, Abschnitt "Docker"](backend/README.md#docker)):
+
+```bash
+docker compose -f Tools/docker-compose.dev.yml --profile backend up -d --build
 ```
 
 Details siehe [`backend/README.md`](backend/README.md).

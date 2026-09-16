@@ -10,7 +10,7 @@ Dashboard-Oberflaeche ist (noch) nicht Teil dieser Anwendung - siehe Root-`READM
 ```
 backend/
 ├── pom.xml
-├── docker-compose.yml                MariaDB fuer die lokale Entwicklung
+├── Dockerfile                        Baut das Backend als eigenstaendiges Image (siehe "Docker")
 └── src/main/java/de/farmpulse/backend/
     ├── FarmPulseBackendApplication.java
     ├── config/
@@ -28,6 +28,7 @@ backend/
     └── repository/                          Spring-Data-Repositories
 └── src/main/resources/
     ├── application.yml
+    ├── application-docker.yml            Ueberschreibt DB-Host/Austauschordner fuer den Container-Betrieb
     └── db/migration/                        Flyway-Migrationen (V1-V5)
 ```
 
@@ -80,17 +81,19 @@ Schema-Aenderungen erfolgen ausschliesslich ueber neue Flyway-Migrationen unter
 
 - Java 21
 - Maven (`mvn`)
-- Docker (fuer die lokale MariaDB via `docker-compose.yml` sowie fuer die
-  Testcontainers-Integrationstests)
+- Docker (fuer die lokale MariaDB via `Tools/docker-compose.dev.yml` sowie fuer
+  die Testcontainers-Integrationstests und den optionalen Backend-Container)
 
 ## Lokale Entwicklung
 
+Backend lokal (ohne Container) gegen eine containerisierte MariaDB:
+
 ```bash
-# 1. MariaDB starten
-cd backend
-docker compose up -d
+# 1. MariaDB starten (aus dem Repo-Root)
+docker compose -f Tools/docker-compose.dev.yml up -d
 
 # 2. Backend starten (liest standardmaessig ../mock-exchange, siehe Tools/mock-bridge.sh)
+cd backend
 mvn spring-boot:run
 ```
 
@@ -98,6 +101,34 @@ Zum Simulieren von Bridge-Daten ohne laufendes FS25 (siehe Root-`README.md`):
 
 ```bash
 ./Tools/mock-bridge.sh
+```
+
+## Docker
+
+Das Backend laesst sich ueber `backend/Dockerfile` als eigenstaendiges Image bauen
+(mehrstufiger Build: Maven baut das Jar, das Runtime-Image enthaelt nur eine JRE +
+das fertige Jar). Aktiv ist dabei standardmaessig das Spring-Profil `docker`
+(`application-docker.yml`), das den DB-Host auf `mariadb` (statt `localhost`) und den
+Austauschordner auf den absoluten Pfad `/mock-exchange` (statt des relativen lokalen
+Defaults) umstellt - beides passend zum Dev-Compose-Setup.
+
+Ueber `Tools/docker-compose.dev.yml` (Compose-Profil `backend`, siehe Kommentar am
+Dateianfang) laesst sich das Backend zusammen mit MariaDB komplett containerisiert
+starten, inkl. Mount von `mock-exchange/` aus dem Repo-Root:
+
+```bash
+docker compose -f Tools/docker-compose.dev.yml --profile backend up -d --build
+```
+
+Eigenstaendig bauen/starten (z.B. um das Image isoliert zu testen):
+
+```bash
+cd backend
+docker build -t farmpulse-backend .
+docker run --rm -p 8080:8080 \
+  -e DB_HOST=host.docker.internal \
+  -v "$(pwd)/../mock-exchange:/mock-exchange:ro" \
+  farmpulse-backend
 ```
 
 ## Konfiguration
