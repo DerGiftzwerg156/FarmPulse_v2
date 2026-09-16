@@ -1,0 +1,68 @@
+<div class="flex min-h-screen items-center justify-center bg-fp-bg px-4 py-10">
+  <div class="w-full max-w-xl">
+    <div class="mb-6 flex items-center justify-center gap-2">
+      <span class="flex h-10 w-10 items-center justify-center rounded-md border border-fp-accent/50 bg-fp-panel font-display text-lg font-bold text-fp-accent">
+        F
+      </span>
+      <span class="font-display text-lg uppercase tracking-[0.14em] text-fp-text">FarmPulse</span>
+    </div>
+
+    <div class="rounded-md border border-fp-border bg-fp-panel p-6">
+      @if (!backstorySubmitted()) {
+        <h1 class="font-display text-sm font-semibold uppercase tracking-[0.16em] text-fp-text">
+          Savegame erstellen
+        </h1>
+        <p class="mt-2 font-body text-sm text-fp-muted">
+          Erzähl kurz die Vorgeschichte deines Hofs. Das geht nur einmal - danach ist der Eintrag fest gespeichert.
+        </p>
+
+        <textarea
+          class="mt-4 h-40 w-full resize-none rounded-md border border-fp-border bg-fp-bg p-3 font-body text-sm text-fp-text placeholder:text-fp-muted focus:border-fp-accent/50 focus:outline-none"
+          placeholder="Es war einmal ein kleiner Hof am Rande des Dorfes..."
+          [ngModel]="backstory()"
+          (ngModelChange)="backstory.set($event)"
+          [disabled]="submitting()"
+        ></textarea>
+
+        @if (errorMessage()) {
+          <p class="mt-2 font-body text-sm text-fp-warn">{{ errorMessage() }}</p>
+        }
+
+        <button
+          type="button"
+          class="mt-4 flex w-full items-center justify-center gap-1.5 rounded-md border border-fp-accent/50 bg-fp-accent/10 py-2.5 font-display text-[11px] font-semibold uppercase tracking-[0.14em] text-fp-accent transition hover:bg-fp-accent/20 disabled:opacity-50"
+          [disabled]="submitting()"
+          (click)="submit()"
+        >
+          @if (submitting()) {
+            <svg lucideLoaderCircle class="h-3.5 w-3.5 animate-spin"></svg>
+          }
+          Vorgeschichte speichern
+        </button>
+      } @else {
+        <h1 class="flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-[0.16em] text-fp-text">
+          <svg lucideSprout class="h-4 w-4 text-fp-accent"></svg>
+          Vorgeschichte gespeichert
+        </h1>
+        <p class="mt-2 font-body text-sm text-fp-muted">
+          Warte auf die ersten Daten vom Farm-Server. Die Ansicht aktualisiert sich automatisch.
+        </p>
+      }
+
+      <div class="mt-6 space-y-2 border-t border-fp-border pt-4">
+        @for (step of steps; track step.label) {
+          <div class="flex items-center gap-2.5">
+            @if (isDone(step)) {
+              <svg lucideCheck class="h-4 w-4 shrink-0 text-fp-accent"></svg>
+            } @else {
+              <svg lucideCircleDashed class="h-4 w-4 shrink-0 animate-spin text-fp-muted"></svg>
+            }
+            <span class="font-body text-sm" [class.text-fp-text]="isDone(step)" [class.text-fp-muted]="!isDone(step)">
+              {{ step.label }}
+            </span>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+</div>
