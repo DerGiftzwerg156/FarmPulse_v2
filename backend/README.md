@@ -24,12 +24,16 @@ backend/
     │       ├── WorldIngestService.java      world.json -> WorldSnapshot + Field-/StorageSnapshot
     │       └── FarmIngestService.java       farm.json -> Name/Spielername der Farm
     ├── processing/                          Verarbeitungsschritt-Erweiterungspunkt (siehe unten, je Interface + NoOp in einer Datei)
+    ├── savegame/                            REST-Schnittstelle rund um den Start eines Savegames (siehe unten)
+    │   ├── SavegameController.java          GET/POST /api/savegame
+    │   ├── SavegameService.java             Statuslogik + einmalige Vorgeschichte-Eingabe
+    │   └── dto/
     ├── domain/                              JPA-Entitaeten
     └── repository/                          Spring-Data-Repositories
 └── src/main/resources/
     ├── application.yml
     ├── application-docker.yml            Ueberschreibt DB-Host/Austauschordner fuer den Container-Betrieb
-    └── db/migration/                        Flyway-Migrationen (V1-V5)
+    └── db/migration/                        Flyway-Migrationen (V1-V6)
 ```
 
 ### Ingest-Pipeline
@@ -52,6 +56,27 @@ Fuer jede der drei Dateien laeuft (via `IngestScheduler`, Standardintervalle an
 Die Ingest-Services sind bewusst ausschliesslich ueber `IngestScheduler` erreichbar -
 kein manueller REST-Trigger.
 
+### Savegame-Start (`savegame/`)
+
+`SavegameController` stellt zwei Endpunkte bereit, ueber die ein neuer Spielstand
+("Savegame") gestartet wird:
+
+- `GET /api/savegame` - Fortschritt bis zum Start: `backstorySubmitted` (Vorgeschichte
+  eingegeben), `telemetryPolled`/`worldPolled`/`farmDataPolled` (die jeweilige
+  Austauschdatei wurde mindestens einmal erfolgreich gepollt) sowie `started`, das erst
+  `true` wird, wenn alle vier Flags erfuellt sind.
+- `POST /api/savegame/backstory` (Body `{"backstory": "..."}`) - speichert die
+  "Vorgeschichte" des neuen Spielstands einmalig (`SavegameBackstory`, Tabelle
+  `savegame_backstory`). Ein zweiter Aufruf liefert `409 Conflict`, eine leere/zu lange
+  Vorgeschichte `400 Bad Request`. Die Vorgeschichte selbst wird hier nur gespeichert -
+  die inhaltliche (KI-gestuetzte) Auswertung ist einem spaeteren Ticket vorbehalten.
+
+Da `farm.json`/`world.json` erst nach dem ersten `telemetry.json`-Poll einer Farm
+zugeordnet werden koennen (siehe "Bekannte Einschraenkung" unten), kann die Vorgeschichte
+bereits vorher eingegeben werden: `SavegameBackstory.farm` ist dafuer nullable und wird
+nachtraeglich verknuepft, sobald `TelemetryIngestService` eine neue Farm anlegt (via
+`FarmCreatedEvent`, `SavegameService.onFarmCreated`).
+
 ### Bekannte Einschraenkung: eine aktive Farm pro Instanz
 
 `world.json` und `farm.json` enthalten selbst keine FarmID (nur `telemetry.json`, siehe
@@ -72,6 +97,7 @@ fuer den Erweiterungsprozess).
 | `world_snapshot` | Eine Zeile je tatsaechlich geaendertem `world.json`-Poll (Fuhrpark-Wert). |
 | `field_snapshot` | Volle Feldliste je `world_snapshot` (kein Delta, siehe Bridge-Format). |
 | `storage_snapshot` | Volle Lagerbestandsliste je `world_snapshot`. |
+| `savegame_backstory` | Die einmalig eingegebene "Vorgeschichte" eines Savegames (siehe "Savegame-Start" oben). Hoechstens eine Zeile; `farm_id` nullable, solange die Farm noch nicht bekannt ist. |
 
 Schema-Aenderungen erfolgen ausschliesslich ueber neue Flyway-Migrationen unter
 `src/main/resources/db/migration/` (`Vn__beschreibung.sql`) - niemals durch Hibernate
@@ -172,7 +198,8 @@ cd backend
 mvn test
 ```
 
-Enthaelt Unit-Tests (DTO-Parsing, Ingest-Logik gegen gemockte Repositories) sowie
-`IngestIntegrationTest`, der via Testcontainers eine echte MariaDB startet, die
-Flyway-Migrationen anwendet und einen vollstaendigen Ingest-Durchlauf End-to-End prueft -
+Enthaelt Unit-Tests (DTO-Parsing, Ingest-/Savegame-Logik gegen gemockte Repositories,
+`SavegameController` via `@WebMvcTest`) sowie `IngestIntegrationTest`/
+`SavegameIntegrationTest`, die via Testcontainers eine echte MariaDB starten, die
+Flyway-Migrationen anwenden und den Ingest- bzw. Savegame-Ablauf End-to-End pruefen -
 dafuer muss Docker lokal verfuegbar sein.
