@@ -6,7 +6,8 @@ Austauschordner, den FarmPulse Core ausliest - aufgeteilt nach
 Aenderungsfrequenz statt eines einzigen monolithischen Schnappschusses:
 
 - **`telemetry.json`** (alle paar Sekunden, schnelle "Puls"-Werte): Uhrzeit,
-  Spieltag/Monat/Jahr/Tage je Monat, Kontostand, FarmID.
+  Spieltag/Monat/Jahr/Tage je Monat, Kontostand, FarmID, aktueller Wettertyp
+  und Temperatur.
 - **`world.json`** (seltener, "was mir gehoert" jenseits des Kontostands):
   Feld-/Farmland-Informationen fuer **alle** Felder der Karte, aggregierter
   Fuhrpark-Wert, Lager-/Silobestaende.
@@ -64,6 +65,15 @@ unten fuer Details je Wert):
 6. **[FS25_UsedPlus](https://github.com/Seamforge/FS25_UsedPlus)** (Seamforge, nicht zu verwechseln mit der FS25 AI Coding Reference oben, die im selben Ursprungs-Repo von XelaNull liegt)
 7. **[FS25_UpgradableFactories](https://github.com/demortes/FS25_UpgradableFactories)** (demortes)
 
+Fuer Wetter (Temperatur, Wettertyp) sowie Feld-Anbaudaten/Ertragsschaetzung
+kam zusaetzlich eine weitere Quelle dazu (siehe Tabelle unten):
+
+8. **[FS25_RealisticWeather](https://github.com/arrow-kb/FS25_RealisticWeather)** (arrow-kb) - ueberschreibt/erweitert
+   die (von GIANTS weder im SDK-Dump noch in der LUADOC offengelegte)
+   `Weather`-Klasse und baut dabei u.a. die Wetteranzeige des Basisspiel-HUD
+   nach (`src/gui/hud/GameInfoDisplay.lua`) - einzige gefundene Quelle mit
+   echtem Aufrufcode fuer die sonst verborgenen Wetter-Interna.
+
 | Wert | Verwendeter Ansatz | Status |
 |---|---|---|
 | Stunde/Minute | `g_currentMission.environment.dayTime`, in Millisekunden seit Mitternacht, umgerechnet in Stunde/Minute | **Bestaetigt** (Quelle 2): `AbstractMission:getMinutesLeft()` verrechnet `environment.dayTime` direkt mit `24*60*60*1000` |
@@ -78,6 +88,8 @@ unten fuer Details je Wert):
 | Spielername (`playerName`) | `g_currentMission.playerNickname` | **Bestaetigt** (Quelle 5, FS25_Tardis, echter veroeffentlichter Mod): referenziert dieses Feld direkt |
 | Fuhrpark-Wert (`fleetValue`) | `g_currentMission.vehicleSystem.vehicles` (Liste aller Fahrzeuge), je Eintrag `vehicle:getOwnerFarmId()` zum Filtern + `vehicle:getSellPrice()`, aufsummiert | **Bestaetigt** (Quelle 5, FS25_Tardis, und ein weiterer veroeffentlichter Mod, FS25_VehicleExplorer von teknogeek, fuer `g_currentMission.vehicleSystem.vehicles` als Fahrzeugliste dieser FS25-Engine-Generation - abgeloest gegenueber `g_currentMission.vehicles` aus FS19-FS22 -, Quelle 6 fuer `Vehicle:getSellPrice()` als real gehookte Methode). Bewusst nur der aggregierte Wert, keine Einzelfahrzeug-Details (siehe Einleitung) |
 | Lager-/Silobestaende (`storages`) | `g_currentMission.productionChainManager.productionPoints`, je Punkt `.storage.fillLevels`/`.storage.capacities` (indiziert nach Fill-Typ, aufgeloest ueber `g_fillTypeManager:getFillTypeNameByIndex()`) | **Teilweise bestaetigt** (Quelle 7, FS25_UpgradableFactories, echter veroeffentlichter Mod, fuer die Struktur von `.storage.fillLevels`/`.capacities` und `productionChainManager.productionPoints`): deckt damit bestaetigt Produktionspunkt-Lager ab. Ob dieselbe Struktur auch frei platzierte Hof-Silos (Placeables ohne Produktionspunkt-Charakter) umfasst, ist **nicht** bestaetigt - eine Web-Suche fand Hinweise auf `g_currentMission.placeableSystem.placeables`, gefiltert nach einer Lager-Spezialisierung (`spec_objectStorage`/`spec_palletSpawner`), als moeglichen zusaetzlichen Weg, aber ohne handfesten Quellcode-Beleg. Siehe Abschnitt "Bekannte Luecken" unten |
+| Temperatur (`temperature`) | `g_currentMission.environment.weather:getCurrentTemperature()` | **Bestaetigt** (Quelle 5 FS25_Tardis-Umfeld sowie Basisspiel-Skripte): mehrere echte FS25-Basisspiel-Skripte (`vehicles/specializations/Washable.lua`, `vehicles/VehicleSystem.lua`, `vehicles/specializations/Enterable.lua` - dort direkt an die Cockpit-Aussentemperaturanzeige gebunden) lesen an exakt dieser Stelle dieselbe Methode |
+| Wettertyp (`weatherType`) | Strategie 1: `weather.forecast:dataForTime(environment.currentMonotonicDay, environment.dayTime)` -> `weather:getWeatherObjectByIndex(season, objectIndex)` -> `WeatherType.getName(weatherObject.weatherType)`. Strategie 2 (Fallback): grobe Ableitung aus `weather:getIsHailing()`/`getIsSnowing()`/`getIsRaining()` | Strategie 1 **hergeleitet, nicht bestaetigt** (Quelle 8): Die `Weather`-Klasse selbst ist von GIANTS weder im SDK-Dump noch in der LUADOC offengelegt: die Aufrufkette wurde stattdessen aus echtem HUD-Nachbau-Code (Quelle 8) uebernommen. Die `WeatherType`-Konstanten (`SUN`/`PARTIALLY_CLOUDY`/`CLOUDY`/`RAIN`/`SNOW`/`HAIL`/`TWISTER`/`THUNDER`) selbst sind dagegen **bestaetigt** (Basisspiel `gui/hud/GameInfoDisplay.lua`). Strategie 2 nutzt ausschliesslich **bestaetigte** Einzelmethoden (Basisspiel `objects/SunAdmirer.lua`, `placeables/BeehiveSystem.lua`), liefert dafuer nur eine grobe Naeherung ohne "bewoelkt"/"Gewitter"/"Tornado" |
 
 Ein vollstaendiger erneuter Abgleich aller urspruenglichen Werte
 ausschliesslich gegen die Community-LUADOC (Quelle 1) bestaetigt: Diese deckt
@@ -126,6 +138,15 @@ Bridge abstuerzt. Das Verhalten laesst sich also risikofrei ausprobieren.
    uebereinstimmen.
 5. Pruefen, ob `day`/`month`/`year`/`daysPerMonth` mit der im Spiel
    angezeigten Kalenderanzeige uebereinstimmen.
+5b. Pruefen, ob `temperature` in `telemetry.json` grob zur im Spiel
+    angezeigten Aussentemperatur (z.B. Cockpit-Anzeige) passt, und ob
+    `weatherType` zum aktuell sichtbaren Wetter passt (`SUN` bei
+    Sonnenschein, `RAIN`/`SNOW`/`HAIL` bei entsprechendem Niederschlag).
+    Bleibt `weatherType` dauerhaft `"UNKNOWN"`, ist vermutlich Strategie 1
+    in `FarmPulseBridge.readWeather()` fehlgeschlagen (siehe log.txt) - das
+    ist kein Bug, sondern der erwartete Fall, falls die hergeleitete
+    Aufrufkette in diesem FS25-Build nicht stimmt; Strategie 2 sollte dann
+    trotzdem grobe Werte (`SUN`/`RAIN`/`SNOW`/`HAIL`) liefern.
 6. In `world.json` pruefen, ob `fields` eine plausible Anzahl Eintraege
    enthaelt (Anzahl Felder der geladenen Karte) und ob Groesse/Preis/Besitzer
    fuer ein paar bekannte, bereits gekaufte Felder mit der Ingame-Kartenansicht
@@ -178,7 +199,9 @@ Bridge abstuerzt. Das Verhalten laesst sich also risikofrei ausprobieren.
   "year": 2,
   "daysPerMonth": 3,
   "money": 84250,
-  "farmId": 1
+  "farmId": 1,
+  "weatherType": "SUN",
+  "temperature": 11.4
 }
 ```
 
@@ -195,6 +218,11 @@ sondern per JSON-Parser auf die benannten Felder zugreifen.
 - `money`: aktueller Kontostand des Spieler-Betriebs (kann negativ sein).
 - `farmId`: FarmID des aktuellen Spielers - identifiziert, welcher
   `ownerFarmId`-Wert in `world.json`/`fields` "mir gehoert".
+- `weatherType`: aktueller Wettertyp - einer von `SUN`, `PARTIALLY_CLOUDY`,
+  `CLOUDY`, `RAIN`, `SNOW`, `HAIL`, `THUNDER`, `TWISTER`, oder `UNKNOWN`,
+  falls sich der Typ nicht ermitteln liess (siehe
+  `FarmPulseBridge.readWeather()` zur Herkunft/Konfidenz).
+- `temperature`: aktuelle Umgebungstemperatur in °C (kann negativ sein).
 
 ## Dateiformat: `world.json`
 
@@ -276,10 +304,10 @@ cd Bridge
 lua tests/run_tests.lua
 ```
 
-Erwartete Ausgabe: alle Tests `[ OK ]`, am Ende `68 bestanden, 0
+Erwartete Ausgabe: alle Tests `[ OK ]`, am Ende `70 bestanden, 0
 fehlgeschlagen` (16 JsonEncoder, 9 PollTimer, 8 FieldCollector,
 6 VehicleCollector, 7 StorageCollector, 6 FarmCollector,
-6 WorldCollector, 10 TelemetryCollector). `FarmPulseBridge.lua` selbst hat
+6 WorldCollector, 12 TelemetryCollector). `FarmPulseBridge.lua` selbst hat
 bewusst **keine** automatisierten Tests - es enthaelt ausschliesslich
 GIANTS-Engine-Aufrufe, die sich ausserhalb des laufenden Spiels nicht
 sinnvoll pruefen lassen (siehe Abschnitt "Test-Feedback-Loop" oben).

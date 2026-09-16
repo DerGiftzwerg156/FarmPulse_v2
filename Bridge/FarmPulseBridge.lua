@@ -7,7 +7,8 @@
     nach Aenderungsfrequenz, statt eines einzigen monolithischen Schnappschusses:
 
         - telemetry.json (alle POLL_INTERVAL_MS, schnelle "Puls"-Werte):
-          Uhrzeit, Spieltag/Monat/Jahr/Tage je Monat, Kontostand, FarmID
+          Uhrzeit, Spieltag/Monat/Jahr/Tage je Monat, Kontostand, FarmID,
+          aktueller Wettertyp + Temperatur
         - world.json (alle WORLD_POLL_INTERVAL_MS, seltener - "was mir gehoert"):
           Feld-/Farmland-Informationen fuer ALLE Farmlands der Karte, aggregierter
           Fuhrpark-Wert, Lager-/Silobestaende
@@ -219,6 +220,73 @@ function FarmPulseBridge.readCalendar()
     return hour, minute, day, month, year, daysPerMonth
 end
 
+--- Liest den aktuellen Wettertyp und die Umgebungstemperatur.
+--
+-- Temperatur ist BESTAETIGT (siehe README.md): drei echte, veroeffentlichte
+-- Mods (u.a. FS25_RealisticWeather) lesen an dieser Stelle
+-- environment.weather:getCurrentTemperature() fuer denselben Zweck (u.a. die
+-- Aussentemperatur-Anzeige im Fahrzeug-Cockpit).
+--
+-- Wettertyp Strategie 1 ist HERGELEITET, nicht bestaetigt (siehe README.md):
+-- GIANTS haelt Weather.lua/Environment.lua sowohl aus dem SDK-Dump als auch
+-- aus der offiziellen LUADOC zurueck. Die Aufrufkette (forecast:dataForTime,
+-- getWeatherObjectByIndex, WeatherType.getName) taucht zwar in echtem,
+-- veroeffentlichtem Mod-Code auf (der die Basisspiel-Wetteranzeige
+-- nachbaut), die Klassendefinition selbst liegt aber nicht offen.
+-- Strategie 2 (Fallback) nutzt ausschliesslich BESTAETIGTE Methoden
+-- (getIsRaining/getIsSnowing/getIsHailing, ebenfalls in echtem Basisspiel-Code
+-- referenziert), liefert dafuer nur eine grobe Naeherung ohne "bewoelkt".
+-- @return weatherType (string, roh - Normalisierung siehe TelemetryCollector),
+--         temperature (number)
+function FarmPulseBridge.readWeather()
+    local mission = getMission()
+    local temperature = 0
+    local weatherType = nil
+
+    local tempOk, tempResult = pcall(function()
+        return mission.environment.weather:getCurrentTemperature()
+    end)
+    if tempOk and type(tempResult) == "number" then
+        temperature = tempResult
+    else
+        FarmPulseBridge.log("WARNUNG: Konnte Temperatur nicht lesen - exportiere 0.")
+    end
+
+    -- Strategie 1 (hergeleitet, siehe Funktionskommentar).
+    local typeOk, typeResult = pcall(function()
+        local weather = mission.environment.weather
+        local _, currentWeather = weather.forecast:dataForTime(mission.environment.currentMonotonicDay,
+            mission.environment.dayTime)
+        local weatherObject = weather:getWeatherObjectByIndex(currentWeather.season, currentWeather.objectIndex)
+        return WeatherType.getName(weatherObject.weatherType)
+    end)
+    if typeOk and type(typeResult) == "string" then
+        weatherType = typeResult
+    else
+        -- Strategie 2 (Fallback, bestaetigte Einzelmethoden - siehe Funktionskommentar).
+        local fallbackOk, fallbackResult = pcall(function()
+            local weather = mission.environment.weather
+            if weather:getIsHailing() then
+                return "HAIL"
+            end
+            if weather:getIsSnowing() then
+                return "SNOW"
+            end
+            if weather:getIsRaining() then
+                return "RAIN"
+            end
+            return "SUN"
+        end)
+        if fallbackOk and type(fallbackResult) == "string" then
+            weatherType = fallbackResult
+        else
+            FarmPulseBridge.log("WARNUNG: Konnte Wettertyp ueber keine bekannte API lesen - exportiere UNKNOWN.")
+        end
+    end
+
+    return weatherType, temperature
+end
+
 --- Liest die rohe Liste aller Farmlands ("Felder" im Sinne dieser Bridge) ueber
 -- g_farmlandManager. Ob ein Farmland dem aktuellen Spieler gehoert, wird hier
 -- bewusst NICHT entschieden (siehe FieldCollector.lua) - es wird lediglich die
@@ -389,6 +457,7 @@ function FarmPulseBridge.exportTelemetry()
     local hour, minute, day, month, year, daysPerMonth = FarmPulseBridge.readCalendar()
     local money = FarmPulseBridge.readMoney()
     local farmId = FarmPulseBridge.readFarmId()
+    local weatherType, temperature = FarmPulseBridge.readWeather()
 
     local payload = TelemetryCollector.buildPayload({
         hour = hour,
@@ -399,6 +468,8 @@ function FarmPulseBridge.exportTelemetry()
         daysPerMonth = daysPerMonth,
         money = money,
         farmId = farmId,
+        weatherType = weatherType,
+        temperature = temperature,
     })
 
     FarmPulseBridge.writeJsonFile(FarmPulseBridge.TELEMETRY_FILENAME, TelemetryCollector.toJson(payload))
