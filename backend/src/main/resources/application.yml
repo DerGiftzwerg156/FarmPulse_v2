@@ -28,8 +28,11 @@ logging:
 # Konfiguration des Bridge-Austauschordners und der Poll-Intervalle, siehe
 # de.farmpulse.backend.config.BridgeExchangeProperties und
 # de.farmpulse.backend.ingest.IngestScheduler. Default-Verzeichnis passt zum
-# Standard-Zielordner von Tools/mock-bridge.sh (repo-root/mock-exchange),
-# wenn das Backend aus dem backend/-Ordner heraus gestartet wird.
+# Standard-Zielordner von Tools/mock-bridge.sh (repo-root/mock-exchange) -
+# Arbeitsverzeichnis der Anwendung ist der Repo-Root, nicht backend/ (siehe
+# workingDirectory der spring-boot-maven-plugin-Konfiguration in pom.xml
+# fuer `mvn spring-boot:run`; bei einem IDE-Start entsprechend als
+# "Working directory" der Run-Konfiguration setzen).
 farmpulse:
   bridge:
     exchange-dir: ${FARMPULSE_BRIDGE_EXCHANGE_DIR:./mock-exchange}

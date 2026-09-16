@@ -46,7 +46,7 @@ Diese Tests laufen auch automatisch in CI, siehe unten.
 
 ```bash
 docker compose -f Tools/docker-compose.dev.yml up -d   # MariaDB
-cd backend && mvn spring-boot:run                       # liest standardmaessig ../mock-exchange
+cd backend && mvn spring-boot:run                       # liest standardmaessig repo-root/mock-exchange
 ```
 
 Alternativ komplett containerisiert (Backend + MariaDB, siehe

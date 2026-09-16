@@ -17,7 +17,7 @@ dir = "backend"
 run = "mvn test"
 
 [tasks."backend-run"]
-description = "Backend lokal starten (liest standardmaessig ../mock-exchange)"
+description = "Backend lokal starten (liest standardmaessig repo-root/mock-exchange)"
 dir = "backend"
 run = "mvn spring-boot:run"
 

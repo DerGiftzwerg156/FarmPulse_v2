@@ -89,6 +89,16 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <!-- Repo-Root als Arbeitsverzeichnis fuer `mvn spring-boot:run`,
+                         unabhaengig davon, aus welchem Verzeichnis mvn selbst
+                         aufgerufen wird - relative Defaults wie
+                         farmpulse.bridge.exchange-dir (application.yml) gehen davon
+                         aus. Nicht ueber -Dspring-boot.run.workingDirectory
+                         ueberschreiben, ausser bewusst ein anderes Arbeitsverzeichnis
+                         gewuenscht ist. -->
+                    <workingDirectory>${project.basedir}/..</workingDirectory>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

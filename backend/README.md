@@ -92,7 +92,9 @@ Backend lokal (ohne Container) gegen eine containerisierte MariaDB:
 # 1. MariaDB starten (aus dem Repo-Root)
 docker compose -f Tools/docker-compose.dev.yml up -d
 
-# 2. Backend starten (liest standardmaessig ../mock-exchange, siehe Tools/mock-bridge.sh)
+# 2. Backend starten (liest standardmaessig repo-root/mock-exchange, siehe
+#    Tools/mock-bridge.sh - `mvn spring-boot:run` laeuft dafuer mit dem
+#    Repo-Root als Arbeitsverzeichnis, siehe pom.xml)
 cd backend
 mvn spring-boot:run
 ```
@@ -142,7 +144,7 @@ Alle Werte sind per Umgebungsvariable ueberschreibbar (siehe `src/main/resources
 | `DB_NAME` | `farmpulse` | Datenbankname |
 | `DB_USERNAME` | `farmpulse` | DB-Benutzer |
 | `DB_PASSWORD` | `farmpulse` | DB-Passwort |
-| `FARMPULSE_BRIDGE_EXCHANGE_DIR` | `../mock-exchange` | Ordner mit `telemetry.json`/`world.json`/`farm.json` |
+| `FARMPULSE_BRIDGE_EXCHANGE_DIR` | `./mock-exchange` (relativ zum Repo-Root, siehe "Lokale Entwicklung") | Ordner mit `telemetry.json`/`world.json`/`farm.json` |
 | `FARMPULSE_TELEMETRY_INTERVAL_MS` | `5000` | Poll-Intervall telemetry.json |
 | `FARMPULSE_WORLD_INTERVAL_MS` | `30000` | Poll-Intervall world.json |
 | `FARMPULSE_FARM_INTERVAL_MS` | `60000` | Poll-Intervall farm.json |

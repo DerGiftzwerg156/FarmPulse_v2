@@ -4,9 +4,10 @@
 # - DB_HOST: "localhost" passt nicht, wenn MariaDB in einem eigenen Container
 #   laeuft - im Dev-Compose-Setup (Tools/docker-compose.dev.yml) heisst der
 #   MariaDB-Service "mariadb".
-# - exchange-dir: der relative Default "../mock-exchange" bezieht sich auf ein
-#   lokales Checkout; im Container wird der Austauschordner stattdessen unter
-#   einem festen absoluten Pfad gemountet (siehe Dev-Compose-Setup).
+# - exchange-dir: der relative Default "./mock-exchange" bezieht sich auf das
+#   Arbeitsverzeichnis eines lokalen Checkouts (Repo-Root); im Container wird
+#   der Austauschordner stattdessen unter einem festen absoluten Pfad
+#   gemountet (siehe Dev-Compose-Setup).
 spring:
   datasource:
     url: jdbc:mariadb://${DB_HOST:mariadb}:${DB_PORT:3306}/${DB_NAME:farmpulse}
