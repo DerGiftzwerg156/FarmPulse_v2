@@ -15,7 +15,7 @@ COPY src src
 RUN mvn -B -q package -DskipTests
 
 # Schlankes Runtime-Image ohne JDK/Maven.
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:25-jre-alpine
 WORKDIR /app
 COPY --from=build /build/target/farmpulse-backend-*.jar app.jar
 
