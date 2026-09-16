@@ -33,3 +33,8 @@ Thumbs.db
 # Umgebungsspezifische/Secret-Dateien
 .env
 .env.*
+
+# Backend (Maven/Java)
+backend/target/
+*.class
+hs_err_pid*.log

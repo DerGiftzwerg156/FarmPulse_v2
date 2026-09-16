@@ -30,6 +30,20 @@ Bitte vor dem Oeffnen eines PRs der Reihe nach durchgehen:
    erwartete Anzahl Tests). Ist kein Lua lokal installiert:
    `apt-get install lua5.4` (Debian/Ubuntu) oder aequivalent.
 
+   Fuer Aenderungen unter `backend/`:
+
+   ```bash
+   cd backend
+   mvn test
+   ```
+
+   Erfordert lokal Docker (fuer die Testcontainers-Integrationstests gegen
+   MariaDB), siehe `backend/README.md`, Abschnitt "Tests ausfuehren".
+   Aendert sich das Datenbankschema, gehoert dazu immer eine neue,
+   fortlaufend nummerierte Flyway-Migration unter
+   `backend/src/main/resources/db/migration/` - niemals eine bestehende
+   Migration nachtraeglich aendern.
+
 2. **Neue Logik testen.** Aenderungen an einem GIANTS-unabhaengigen Modul
    unter `Bridge/scripts/` (also allem ausser `FarmPulseBridge.lua` selbst)
    brauchen passende Tests in `Bridge/tests/`. Reine Engine-Glue-Aenderungen

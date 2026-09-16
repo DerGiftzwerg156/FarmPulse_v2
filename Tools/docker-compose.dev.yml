@@ -1,0 +1,60 @@
+# FarmPulse Dev-Umgebung: MariaDB (immer) + Backend (optional).
+#
+# `name:` fixiert den Compose-Projektnamen unabhaengig davon, aus welchem
+# Verzeichnis heraus die Datei aufgerufen wird (sonst haengt der Name der
+# Volumes/Netzwerke vom aktuellen Arbeitsverzeichnis ab).
+name: farmpulse-dev
+
+# Nur MariaDB starten (Standard-Workflow: Backend laeuft lokal via
+# `mvn spring-boot:run`, siehe backend/README.md):
+#   docker compose -f Tools/docker-compose.dev.yml up -d
+#
+# MariaDB + Backend containerisiert starten (Compose-Profil "backend" -
+# nicht zu verwechseln mit dem Spring-Profil "docker" im Backend selbst,
+# siehe backend/src/main/resources/application-docker.yml):
+#   docker compose -f Tools/docker-compose.dev.yml --profile backend up -d --build
+
+services:
+  mariadb:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: farmpulse
+      MARIADB_USER: farmpulse
+      MARIADB_PASSWORD: farmpulse
+      MARIADB_ROOT_PASSWORD: farmpulse-root
+    ports:
+      - "3306:3306"
+    volumes:
+      - farmpulse-mariadb-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    profiles: ["backend"]
+    build:
+      context: ../backend
+    restart: unless-stopped
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: mariadb
+      DB_PORT: 3306
+      DB_NAME: farmpulse
+      DB_USERNAME: farmpulse
+      DB_PASSWORD: farmpulse
+      # Gemountet aus dem Repo-Root (siehe volumes unten) - derselbe Ordner,
+      # den Tools/mock-bridge.sh standardmaessig befuellt.
+      FARMPULSE_BRIDGE_EXCHANGE_DIR: /mock-exchange
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../mock-exchange:/mock-exchange:ro
+
+volumes:
+  farmpulse-mariadb-data:

@@ -1,0 +1,21 @@
+version: 2
+updates:
+  # Backend: Java-Abhaengigkeiten aus backend/pom.xml (Spring Boot, Flyway,
+  # MariaDB-Treiber, Testcontainers, ...)
+  - package-ecosystem: maven
+    directory: /backend
+    schedule:
+      interval: weekly
+
+  # Backend-Docker-Image: Basis-Images in backend/Dockerfile (Maven-/JRE-Image)
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: weekly
+
+  # GitHub-Actions-Workflows unter .github/workflows/ (z.B. actions/checkout,
+  # actions/setup-java)
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

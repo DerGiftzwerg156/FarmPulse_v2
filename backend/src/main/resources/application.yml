@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: farmpulse-backend
+  datasource:
+    url: jdbc:mariadb://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:farmpulse}
+    username: ${DB_USERNAME:farmpulse}
+    password: ${DB_PASSWORD:farmpulse}
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Schema wird ausschliesslich ueber Flyway-Migrationen verwaltet
+      # (src/main/resources/db/migration), Hibernate validiert nur dagegen.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MariaDBDialect
+  flyway:
+    enabled: true
+
+# DEBUG-Logs fuer den Ingest-Pipeline-Code (Scheduler-Ticks, Datei-Lesen,
+# Verarbeitungsschritt, Persistenz - siehe de.farmpulse.backend.ingest)
+# zeigen, an welchem Schritt die Anwendung gerade ist. Ueber
+# FARMPULSE_LOG_LEVEL auf z.B. INFO reduzierbar, falls das zu gesprächig ist.
+logging:
+  level:
+    de.farmpulse.backend: ${FARMPULSE_LOG_LEVEL:DEBUG}
+
+# Konfiguration des Bridge-Austauschordners und der Poll-Intervalle, siehe
+# de.farmpulse.backend.config.BridgeExchangeProperties und
+# de.farmpulse.backend.ingest.IngestScheduler. Default-Verzeichnis passt zum
+# Standard-Zielordner von Tools/mock-bridge.sh (repo-root/mock-exchange) -
+# Arbeitsverzeichnis der Anwendung ist der Repo-Root, nicht backend/ (siehe
+# workingDirectory der spring-boot-maven-plugin-Konfiguration in pom.xml
+# fuer `mvn spring-boot:run`; bei einem IDE-Start entsprechend als
+# "Working directory" der Run-Konfiguration setzen).
+farmpulse:
+  bridge:
+    exchange-dir: ${FARMPULSE_BRIDGE_EXCHANGE_DIR:./mock-exchange}
+    # angelehnt an FarmPulseBridge.POLL_INTERVAL_MS (siehe Bridge/FarmPulseBridge.lua)
+    telemetry-interval-ms: ${FARMPULSE_TELEMETRY_INTERVAL_MS:5000}
+    # angelehnt an FarmPulseBridge.WORLD_POLL_INTERVAL_MS
+    world-interval-ms: ${FARMPULSE_WORLD_INTERVAL_MS:30000}
+    # farm.json aendert sich praktisch nie - deutlich seltener pruefen
+    farm-interval-ms: ${FARMPULSE_FARM_INTERVAL_MS:60000}
