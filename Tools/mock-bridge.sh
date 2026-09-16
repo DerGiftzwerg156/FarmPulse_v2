@@ -67,6 +67,18 @@ wheat_capacity=20000
 barley_amount=1200
 barley_capacity=20000
 
+# --- Anbaudaten je eigenem Feld (siehe FieldCollector.computeCropInfo()) ---
+# growth_pct laeuft 0..100 (Prozent von growthState) und startet nach dem
+# "erntereif"-Punkt wieder bei 0 (simulierte Wiederaussaat).
+field1_fruit="WHEAT"
+field1_area_ha=4.53
+field1_liter_per_sqm=0.35
+field1_growth_pct=10
+field2_fruit="BARLEY"
+field2_area_ha=6.1
+field2_liter_per_sqm=0.30
+field2_growth_pct=55
+
 # --- Betriebs-/Spieleridentitaet (siehe FarmCollector.lua), einmalig ---
 farm_name="Sonnenhof"
 player_name="Keno"
@@ -82,9 +94,17 @@ JSON
 
 write_world() {
     local tmp_file="${WORLD_FILE}.tmp"
+    # growthState/estimatedYieldLiters als Dezimalzahlen - Bash rechnet nur
+    # mit Ganzzahlen, daher hier per awk berechnet (siehe
+    # FieldCollector.computeCropInfo() fuer dieselbe Formel in Lua).
+    local field1_growth field1_yield field2_growth field2_yield
+    field1_growth=$(awk "BEGIN { printf \"%.2f\", ${field1_growth_pct} / 100 }")
+    field1_yield=$(awk "BEGIN { printf \"%.1f\", ${field1_liter_per_sqm} * ${field1_area_ha} * 10000 * ${field1_growth_pct} / 100 }")
+    field2_growth=$(awk "BEGIN { printf \"%.2f\", ${field2_growth_pct} / 100 }")
+    field2_yield=$(awk "BEGIN { printf \"%.1f\", ${field2_liter_per_sqm} * ${field2_area_ha} * 10000 * ${field2_growth_pct} / 100 }")
 
     cat > "${tmp_file}" <<JSON
-{"fleetValue":${fleet_value},"fields":[{"fieldId":1,"ownerFarmId":${farm_id},"sizeHa":4.53,"price":32000},{"fieldId":2,"ownerFarmId":${farm_id},"sizeHa":6.1,"price":45000},{"fieldId":3,"ownerFarmId":0,"sizeHa":3.2,"price":28000}],"storages":[{"fillType":"BARLEY","amount":${barley_amount},"capacity":${barley_capacity}},{"fillType":"WHEAT","amount":${wheat_amount},"capacity":${wheat_capacity}}]}
+{"fleetValue":${fleet_value},"fields":[{"fieldId":1,"ownerFarmId":${farm_id},"sizeHa":${field1_area_ha},"price":32000,"fruitType":"${field1_fruit}","growthState":${field1_growth},"estimatedYieldLiters":${field1_yield}},{"fieldId":2,"ownerFarmId":${farm_id},"sizeHa":${field2_area_ha},"price":45000,"fruitType":"${field2_fruit}","growthState":${field2_growth},"estimatedYieldLiters":${field2_yield}},{"fieldId":3,"ownerFarmId":0,"sizeHa":3.2,"price":28000,"fruitType":null,"growthState":null,"estimatedYieldLiters":null}],"storages":[{"fillType":"BARLEY","amount":${barley_amount},"capacity":${barley_capacity}},{"fillType":"WHEAT","amount":${wheat_amount},"capacity":${wheat_capacity}}]}
 JSON
     mv "${tmp_file}" "${WORLD_FILE}"
 }
@@ -141,6 +161,11 @@ while true; do
     if [ "${barley_amount}" -lt 0 ]; then
         barley_amount=0
     fi
+
+    # Wachstum der beiden simulierten Felder voranschreiten lassen; nach
+    # Erreichen von 100% (erntereif) wieder bei 0 beginnen (Wiederaussaat).
+    field1_growth_pct=$(((field1_growth_pct + 1) % 101))
+    field2_growth_pct=$(((field2_growth_pct + 1) % 101))
 
     # Wetter/Temperatur ebenfalls leicht schwanken lassen (kein echtes
     # Wettermodell - nur zu Demo-/Testzwecken, analog zu Kontostand/Lager oben).

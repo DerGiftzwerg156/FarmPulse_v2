@@ -57,7 +57,8 @@ return function()
         local payload = WorldCollector.buildPayload({ fields = fields, storages = storages, fleetValue = 100 })
         testkit.assertEquals(
             '{"fleetValue":100,'
-                .. '"fields":[{"fieldId":1,"ownerFarmId":0,"sizeHa":4.53,"price":32000}],'
+                .. '"fields":[{"fieldId":1,"ownerFarmId":0,"sizeHa":4.53,"price":32000,'
+                .. '"fruitType":null,"growthState":null,"estimatedYieldLiters":null}],'
                 .. '"storages":[{"fillType":"WHEAT","amount":5000,"capacity":20000}]}',
             WorldCollector.toJson(payload)
         )

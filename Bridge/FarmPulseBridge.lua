@@ -10,8 +10,9 @@
           Uhrzeit, Spieltag/Monat/Jahr/Tage je Monat, Kontostand, FarmID,
           aktueller Wettertyp + Temperatur
         - world.json (alle WORLD_POLL_INTERVAL_MS, seltener - "was mir gehoert"):
-          Feld-/Farmland-Informationen fuer ALLE Farmlands der Karte, aggregierter
-          Fuhrpark-Wert, Lager-/Silobestaende
+          Feld-/Farmland-Informationen fuer ALLE Farmlands der Karte (inkl.
+          optionaler Anbaudaten: Fruchtart, Wachstumsfortschritt,
+          Ertragsschaetzung), aggregierter Fuhrpark-Wert, Lager-/Silobestaende
         - farm.json (einmalig bei Aktivierung, aendert sich praktisch nie):
           Hofname, Spielername
 
@@ -26,8 +27,12 @@
 
     Bewusst NICHT exportiert (siehe README.md fuer die Begruendung je Kategorie):
     Fahrzeugzustand (Tank/Verschleiss - beobachtet der Spieler selbst im Spiel),
-    Tiere, Anbaudaten je Feld, Vertraege/Missionen, Kredite/Schulden (uebernimmt
-    Core komplett), Verlauf/Historie (uebernimmt das Spiel selbst).
+    Tiere, Vertraege/Missionen, Kredite/Schulden (uebernimmt Core komplett),
+    Verlauf/Historie (uebernimmt das Spiel selbst). Anbaudaten je Feld
+    (Fruchtart/Wachstum/Ertragsschaetzung) waren urspruenglich ebenfalls
+    bewusst ausgeschlossen ("bei fields geht es nur um Besitz, nicht um
+    Bewirtschaftung") - diese Entscheidung wurde fuer die Ertragsprognose im
+    Frontend revidiert, siehe readFieldCrops().
 
     ACHTUNG - unbestaetigtes Kategorie-C-Wissen: Die konkreten FS25-Engine-Aufrufe
     unten (welches Objekt haelt den Kontostand, in welcher Einheit liegt die
@@ -325,6 +330,100 @@ function FarmPulseBridge.readFarmlands()
     return raw
 end
 
+--- Liest je Feld (g_fieldManager, NICHT dasselbe wie die Farmlands aus
+-- readFarmlands()) rohe Anbau-/Ertragswerte, indiziert nach Farmland-ID, damit
+-- FieldCollector.buildFields() sie den world.json-Feldern zuordnen kann.
+--
+-- HERGELEITET, nicht vollstaendig bestaetigt (siehe README.md, Tabelle):
+-- g_fieldManager.fields, field:getFieldState(), FieldState.fruitTypeIndex/
+-- .growthState/.isValid sowie g_fruitTypeManager:getFruitTypeByIndex() mit
+-- .literPerSqm/.minHarvestingGrowthState/:getIsHarvestable() sind gegen die
+-- offizielle GDN-Dokumentation UND echte FS25-Basisspiel-Skripte bestaetigt.
+-- NICHT bestaetigt ist, wie sich zum rohen fruitTypeIndex ein lesbarer Name
+-- auflösen laesst - diese Bridge probiert dafuer zwei unbestaetigte
+-- Strategien (FruitType.getName(), analog zum bestaetigten
+-- WeatherType.getName()-Muster; sonst g_fillTypeManager:getFillTypeNameByIndex()
+-- mit demselben Index, da Frucht- und Fuelltyp fuer die Basis-Feldfrucht in
+-- FS ueblicherweise denselben Namen tragen) und laesst fruitType sonst leer
+-- (kein Anbau exportiert), statt einen falschen Namen zu raten.
+-- @return Tabelle, die Farmland-IDs auf rohe {fruitTypeName, growthState,
+--         minHarvestingGrowthState, literPerSqm, isHarvestable, areaHa}
+--         abbildet (leer, falls g_fieldManager nicht verfuegbar ist)
+function FarmPulseBridge.readFieldCrops()
+    local raw = {}
+
+    local ok = pcall(function()
+        for _, field in pairs(g_fieldManager.fields) do
+            -- Einzelne fehlgeschlagene/unbestellte Felder ueberspringen, statt
+            -- die gesamte Liste zu verwerfen.
+            pcall(function()
+                local fieldState = field:getFieldState()
+                if fieldState == nil or not fieldState.isValid then
+                    return
+                end
+                if fieldState.fruitTypeIndex == nil or fieldState.fruitTypeIndex == FruitType.UNKNOWN then
+                    return
+                end
+
+                local farmlandId = 0
+                if field.farmland ~= nil then
+                    farmlandId = field.farmland.id or 0
+                elseif fieldState.farmlandId ~= nil then
+                    farmlandId = fieldState.farmlandId
+                end
+                if farmlandId == 0 then
+                    return
+                end
+
+                local fruitTypeName = nil
+                pcall(function() fruitTypeName = FruitType.getName(fieldState.fruitTypeIndex) end)
+                if fruitTypeName == nil then
+                    pcall(function()
+                        fruitTypeName = g_fillTypeManager:getFillTypeNameByIndex(fieldState.fruitTypeIndex)
+                    end)
+                end
+
+                local desc = g_fruitTypeManager:getFruitTypeByIndex(fieldState.fruitTypeIndex)
+                local literPerSqm = 0
+                local minHarvestingGrowthState = 0
+                local isHarvestable = false
+                if desc ~= nil then
+                    literPerSqm = desc.literPerSqm or 0
+                    minHarvestingGrowthState = desc.minHarvestingGrowthState or 0
+                    local harvestOk, harvestResult = pcall(function()
+                        return desc:getIsHarvestable(fieldState.growthState)
+                    end)
+                    if harvestOk then
+                        isHarvestable = harvestResult
+                    end
+                end
+
+                local areaHa = 0
+                local areaOk, areaResult = pcall(function() return field:getAreaHa() end)
+                if areaOk and type(areaResult) == "number" then
+                    areaHa = areaResult
+                end
+
+                raw[farmlandId] = {
+                    fruitTypeName = fruitTypeName,
+                    growthState = fieldState.growthState or 0,
+                    minHarvestingGrowthState = minHarvestingGrowthState,
+                    literPerSqm = literPerSqm,
+                    isHarvestable = isHarvestable,
+                    areaHa = areaHa,
+                }
+            end)
+        end
+    end)
+
+    if not ok then
+        FarmPulseBridge.log("WARNUNG: Konnte Feld-Anbaudaten nicht ueber g_fieldManager lesen - exportiere keine Anbaudaten.")
+        return {}
+    end
+
+    return raw
+end
+
 --- Liest den Hofnamen der aktuellen Farm.
 -- Strategie 1 ist gegen einen echten, veroeffentlichten Mod bestaetigt (siehe
 -- README.md): FS25_InfoDisplayExtension liest `owningFarm.name` auf demselben
@@ -485,11 +584,12 @@ function FarmPulseBridge.exportWorld()
 
     local farmId = FarmPulseBridge.readFarmId()
     local rawFarmlands = FarmPulseBridge.readFarmlands()
+    local rawFieldCrops = FarmPulseBridge.readFieldCrops()
     local rawVehiclePrices = FarmPulseBridge.readVehiclePrices(farmId)
     local rawStorages = FarmPulseBridge.readStorages(farmId)
 
     local payload = WorldCollector.buildPayload({
-        fields = FieldCollector.buildFields(rawFarmlands),
+        fields = FieldCollector.buildFields(rawFarmlands, rawFieldCrops),
         fleetValue = VehicleCollector.buildFleetValue(rawVehiclePrices),
         storages = StorageCollector.buildStorages(rawStorages),
     })

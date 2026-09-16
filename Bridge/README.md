@@ -9,8 +9,10 @@ Aenderungsfrequenz statt eines einzigen monolithischen Schnappschusses:
   Spieltag/Monat/Jahr/Tage je Monat, Kontostand, FarmID, aktueller Wettertyp
   und Temperatur.
 - **`world.json`** (seltener, "was mir gehoert" jenseits des Kontostands):
-  Feld-/Farmland-Informationen fuer **alle** Felder der Karte, aggregierter
-  Fuhrpark-Wert, Lager-/Silobestaende.
+  Feld-/Farmland-Informationen fuer **alle** Felder der Karte (inkl.
+  optionaler Anbaudaten - Fruchtart, Wachstumsfortschritt, Ertragsschaetzung -
+  fuer die Ertragsprognose im Frontend), aggregierter Fuhrpark-Wert,
+  Lager-/Silobestaende.
 - **`farm.json`** (einmalig bei Aktivierung, aendert sich praktisch nie):
   Hofname, Spielername.
 
@@ -18,12 +20,13 @@ Bewusst **nicht** exportiert - diese Entscheidungen wurden explizit im
 Projekt getroffen, nicht vergessen: Fahrzeugzustand (Tankfuellung, Verschleiss
 - beobachtet der Spieler ohnehin selbst im laufenden Spiel; einzig der
 aggregierte Vermoegenswert des Fuhrparks ist als `fleetValue` relevant),
-Tiere, Anbaudaten je Feld (welche Frucht, Wachstumsstadium - im Sinne dieser
-Bridge geht es bei `fields` nur um Besitz, nicht um Bewirtschaftung),
-Vertraege/Missionen, Kredite/Schulden (diese Logik uebernimmt FarmPulse Core
-vollstaendig, statt die Ingame-Kreditlogik zu spiegeln), sowie jede Form von
-Verlauf/Historie (das Spiel selbst bzw. Core fuehren Buch, die Bridge liefert
-nur Momentaufnahmen).
+Tiere, Vertraege/Missionen, Kredite/Schulden (diese Logik uebernimmt
+FarmPulse Core vollstaendig, statt die Ingame-Kreditlogik zu spiegeln), sowie
+jede Form von Verlauf/Historie (das Spiel selbst bzw. Core fuehren Buch, die
+Bridge liefert nur Momentaufnahmen). Anbaudaten je Feld waren urspruenglich
+ebenfalls aus dieser Liste ("bei `fields` geht es nur um Besitz, nicht um
+Bewirtschaftung") - diese Entscheidung wurde fuer die Ertragsprognose im
+Frontend bewusst revidiert (siehe Tabelle unten).
 
 ## Wichtiger Hinweis zur Vertrauenswuerdigkeit dieses Codes
 
@@ -73,6 +76,11 @@ kam zusaetzlich eine weitere Quelle dazu (siehe Tabelle unten):
    `Weather`-Klasse und baut dabei u.a. die Wetteranzeige des Basisspiel-HUD
    nach (`src/gui/hud/GameInfoDisplay.lua`) - einzige gefundene Quelle mit
    echtem Aufrufcode fuer die sonst verborgenen Wetter-Interna.
+9. **[fs25-lua-api](https://github.com/MyGameSteamOfficial/fs25-lua-api)** (MyGameSteamOfficial) - ein Dump von
+   `dataS/scripts` aus FS25 selbst (886 Lua-Dateien; Funktionsrumpfe teils von
+   GIANTS entfernt, Aufrufstellen aber intakt) - fuer `Field`/`FieldManager`/
+   `FieldState`/`FruitTypeDesc` als echter, wenn auch nicht offiziell
+   dokumentierter Basisspiel-Quellcode.
 
 | Wert | Verwendeter Ansatz | Status |
 |---|---|---|
@@ -84,6 +92,8 @@ kam zusaetzlich eine weitere Quelle dazu (siehe Tabelle unten):
 | FarmID | `g_localPlayer.farmId`, Fallback `g_currentMission:getFarmId()` | **Bestaetigt** (Quelle 2, zusaetzlich gestuetzt durch Quelle 1): `AbstractMission:update()` prueft `g_localPlayer.farmId == self.farmId` direkt gegen ein echtes Feld. Unabhaengig davon zeigt `Player.md` in der Community-LUADOC (Quelle 1) in `Player.createServerInstance()` den Quellcode `self.farmId = farmId`, durchgaengig verwendet (u.a. `g_farmManager:getSpawnPoint(self.farmId)`) - dasselbe Feld auf derselben Klassenfamilie, unabhaengig bestaetigt. `getFarmId()` bleibt als unbestaetigter, aber in der Community weit verbreiteter Fallback |
 | Kontostand | `g_farmManager:getFarmById(farmId):getBalance()`, Fallback `g_currentMission:getMoney()` | **Bestaetigt** (Quelle 1): `Farm.md` zeigt die dokumentierte Methode `Farm:getBalance()` ("Get the current account balance of the farm", keine Argumente). Ein rohes `.money`-Feld ist NICHT dokumentiert und wird deshalb nicht mehr verwendet (Korrektur gegenueber einer fruehen Fassung dieser Bridge). `getFarmById()` selbst ist in `FarmManager.md` ("Get the farm object by given farmId") ebenfalls dokumentiert |
 | Feldliste | `g_farmlandManager:getFarmlands()`, je Eintrag `.id`/`.farmId`/`.areaInHa`/`.price` | **Bestaetigt** (Quelle 1): `FarmlandManager.md` zeigt `getFarmlands()` liefert `self.farmlands` (eine per Farmland-ID indizierte Tabelle - daher `pairs()` statt einer 1-indizierten Sequenz), und `Farmland.md` zeigt in `Farmland:load()` den Quellcode, der genau diese vier Felder setzt (Default-Besitzer `FarmlandManager.NO_OWNER_FARM_ID`, laut `getFarmlandOwner()`-Doku `0`) |
+| Fruchtart/Wachstum je Feld (`fruitType`/`growthState`) | `g_fieldManager.fields` (NICHT `g_farmlandManager`, siehe FieldCollector.lua), je Feld `field:getFieldState()` -> `FieldState.fruitTypeIndex`/`.growthState`/`.isValid`, verknuepft mit dem zugehoerigen Farmland ueber `field.farmland.id` | **Bestaetigt** (Quelle 2 offizielle LUADOC fuer `FieldState.new()`, Quelle 9 fuer den tatsaechlichen `field:getFieldState()`-Aufruf in Basisspiel-Missionsklassen wie `AbstractFieldMission`/`StonePickMission`/`PlowMission`). Die Aufloesung von `fruitTypeIndex` zu einem lesbaren Namen (`fruitType`) ist dagegen **nicht bestaetigt** - siehe `FarmPulseBridge.readFieldCrops()` fuer die zwei unbestaetigten Fallback-Strategien |
+| Ertragsschaetzung (`estimatedYieldLiters`) | `g_fruitTypeManager:getFruitTypeByIndex(fruitTypeIndex)` -> `.literPerSqm`/`.minHarvestingGrowthState`/`:getIsHarvestable(growthState)`, verrechnet mit `field:getAreaHa()` (siehe `FieldCollector.computeCropInfo()` fuer die Formel) | **Bestaetigt** (Quelle 2 offizielle LUADOC `FruitTypeDesc.md` fuer `literPerSqm`/`getIsHarvestable`/etc., Quelle 9 fuer `field:getAreaHa()` in Basisspiel-Code). Die konkrete Ertragsformel selbst (Flaeche × Literwert × Wachstumsfortschritt) ist eine eigene, aus bestaetigten Bausteinen abgeleitete Naeherung - das tatsaechliche Ingame-Ergebnis beim Dreschen beruecksichtigt zusaetzlich Spritz-/Pflug-/Walz-/Unkraut-Faktoren (`FieldState:getHarvestScaleMultiplier()`), die hier bewusst NICHT nachgebildet werden |
 | Hofname (`farmName`) | `g_farmManager:getFarmById(farmId).name` | **Bestaetigt** (Quelle 4, FS25_InfoDisplayExtension, echter veroeffentlichter Mod): liest `owningFarm.name` auf demselben Farm-Objekt, das diese Bridge bereits fuer `getBalance()` verwendet |
 | Spielername (`playerName`) | `g_currentMission.playerNickname` | **Bestaetigt** (Quelle 5, FS25_Tardis, echter veroeffentlichter Mod): referenziert dieses Feld direkt |
 | Fuhrpark-Wert (`fleetValue`) | `g_currentMission.vehicleSystem.vehicles` (Liste aller Fahrzeuge), je Eintrag `vehicle:getOwnerFarmId()` zum Filtern + `vehicle:getSellPrice()`, aufsummiert | **Bestaetigt** (Quelle 5, FS25_Tardis, und ein weiterer veroeffentlichter Mod, FS25_VehicleExplorer von teknogeek, fuer `g_currentMission.vehicleSystem.vehicles` als Fahrzeugliste dieser FS25-Engine-Generation - abgeloest gegenueber `g_currentMission.vehicles` aus FS19-FS22 -, Quelle 6 fuer `Vehicle:getSellPrice()` als real gehookte Methode). Bewusst nur der aggregierte Wert, keine Einzelfahrzeug-Details (siehe Einleitung) |
@@ -119,6 +129,15 @@ Bridge abstuerzt. Das Verhalten laesst sich also risikofrei ausprobieren.
   in `FarmPulseBridge.readStorages()` zusaetzlich
   `g_currentMission.placeableSystem.placeables` nach einer
   Lager-Spezialisierung zu durchsuchen.
+- **`fruitType`** kann trotz tatsaechlich angebauter Frucht `null` bleiben,
+  falls beide Aufloesungs-Strategien in `FarmPulseBridge.readFieldCrops()`
+  fehlschlagen (`FruitType.getName()` ist unbestaetigt, der Fallback ueber
+  `g_fillTypeManager:getFillTypeNameByIndex()` setzt voraus, dass Frucht- und
+  Fuelltyp-Index fuer dieselbe Basisfrucht uebereinstimmen). `growthState`/
+  `estimatedYieldLiters` bleiben dann ebenfalls `null`, auch wenn die reinen
+  Rohwerte (Wachstumsstand, Literwert) intern gelesen werden konnten - siehe
+  `FieldCollector.computeCropInfo()`, das ohne `fruitTypeName` bewusst nichts
+  zurueckgibt, statt eine unbenannte Frucht zu exportieren.
 
 ## Test-Feedback-Loop (bitte einmal durchfuehren)
 
@@ -154,6 +173,12 @@ Bridge abstuerzt. Das Verhalten laesst sich also risikofrei ausprobieren.
 7. In `world.json` pruefen, ob `fleetValue` grob zur Anzahl/Klasse der
    eigenen Fahrzeuge passt, und ob `storages` bekannte Lagerbestaende
    (zumindest aus Produktionspunkten) korrekt widerspiegelt.
+7b. In `world.json` bei einem bekannt bestellten Feld pruefen, ob `fruitType`
+    zur im Spiel angezeigten Frucht passt und `growthState` grob zum
+    sichtbaren Wachstumsstand (0 = gerade gesaet, 1 = erntereif). Bleiben
+    `fruitType`/`growthState`/`estimatedYieldLiters` bei einem bekannt
+    bestellten Feld dauerhaft `null`, siehe Abschnitt "Bekannte Luecken"
+    oben - das ist der erwartete Fallback, kein Absturz.
 8. In `farm.json` pruefen, ob `farmName`/`playerName` mit dem im Spiel
    gewaehlten Hof-/Spielernamen uebereinstimmen.
 9. Diese Beobachtungen (Log-Auszug + ob die Werte stimmen, je Datei) 
@@ -230,8 +255,10 @@ sondern per JSON-Parser auf die benannten Felder zugreifen.
 {
   "fleetValue": 125000,
   "fields": [
-    { "fieldId": 1, "ownerFarmId": 0, "sizeHa": 4.53, "price": 32000 },
-    { "fieldId": 2, "ownerFarmId": 1, "sizeHa": 6.10, "price": 45000 }
+    { "fieldId": 1, "ownerFarmId": 0, "sizeHa": 4.53, "price": 32000,
+      "fruitType": null, "growthState": null, "estimatedYieldLiters": null },
+    { "fieldId": 2, "ownerFarmId": 1, "sizeHa": 6.10, "price": 45000,
+      "fruitType": "WHEAT", "growthState": 0.65, "estimatedYieldLiters": 27716.5 }
   ],
   "storages": [
     { "fillType": "BARLEY", "amount": 1200, "capacity": 20000 },
@@ -249,6 +276,15 @@ sondern per JSON-Parser auf die benannten Felder zugreifen.
     - `ownerFarmId`: FarmID des Besitzers, `0` = noch niemandem gehoerend.
     - `sizeHa`: Groesse des Feldes in Hektar.
     - `price`: aktueller Kaufpreis des Feldes.
+    - `fruitType`: Name der aktuell angebauten Frucht (z.B. `"WHEAT"`), oder
+      `null`, falls kein Feld-Objekt zu diesem Farmland gefunden wurde oder
+      dort aktuell keine Frucht steht (unbestellt, gerade geerntet, ...).
+    - `growthState`: Wachstumsfortschritt der aktuellen Frucht zwischen `0`
+      (gerade gesaet) und `1` (erntereif), oder `null` wie bei `fruitType`.
+    - `estimatedYieldLiters`: grobe Ertragsschaetzung in Litern (FS-
+      Ingame-Einheit, wie `storages`/`amount`) fuer den aktuellen
+      Wachstumsstand, oder `null` wie bei `fruitType`. Siehe Tabelle oben zur
+      Konfidenz - eine Naeherung ohne Spritz-/Pflug-/Wetter-Boni.
 - `storages`: Lager-/Silobestaende der aktuellen Farm, nach Fill-Typ
   aggregiert (mehrere Lagerstaetten desselben Fill-Typs werden
   zusammengefasst) und alphabetisch nach `fillType` sortiert. Siehe "Bekannte
@@ -304,8 +340,8 @@ cd Bridge
 lua tests/run_tests.lua
 ```
 
-Erwartete Ausgabe: alle Tests `[ OK ]`, am Ende `70 bestanden, 0
-fehlgeschlagen` (16 JsonEncoder, 9 PollTimer, 8 FieldCollector,
+Erwartete Ausgabe: alle Tests `[ OK ]`, am Ende `78 bestanden, 0
+fehlgeschlagen` (16 JsonEncoder, 9 PollTimer, 16 FieldCollector,
 6 VehicleCollector, 7 StorageCollector, 6 FarmCollector,
 6 WorldCollector, 12 TelemetryCollector). `FarmPulseBridge.lua` selbst hat
 bewusst **keine** automatisierten Tests - es enthaelt ausschliesslich

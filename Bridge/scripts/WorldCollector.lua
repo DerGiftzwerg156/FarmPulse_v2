@@ -61,6 +61,9 @@ function WorldCollector.toJson(payload)
             { key = "ownerFarmId", value = field.ownerFarmId },
             { key = "sizeHa", value = field.sizeHa },
             { key = "price", value = field.price },
+            { key = "fruitType", value = field.fruitType },
+            { key = "growthState", value = field.growthState },
+            { key = "estimatedYieldLiters", value = field.estimatedYieldLiters },
         })
     end
 
