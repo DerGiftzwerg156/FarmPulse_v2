@@ -22,31 +22,8 @@ import {
 } from '@lucide/angular';
 import { DashboardService } from '../../core/services/dashboard.service';
 import { MailboxService } from '../../core/services/mailbox.service';
-import { WeatherType } from '../../core/models/dashboard.model';
-
-const WEATHER_LABELS: Record<WeatherType, string> = {
-  SUN: 'Sonnig',
-  PARTIALLY_CLOUDY: 'Leicht bewölkt',
-  CLOUDY: 'Bewölkt',
-  RAIN: 'Regen',
-  SNOW: 'Schnee',
-  HAIL: 'Hagel',
-  THUNDER: 'Gewitter',
-  TWISTER: 'Tornado',
-  UNKNOWN: 'Unbekannt',
-};
-
-const WEATHER_ICONS: Record<WeatherType, string> = {
-  SUN: 'sun',
-  PARTIALLY_CLOUDY: 'cloud',
-  CLOUDY: 'cloud',
-  RAIN: 'cloud-rain',
-  SNOW: 'cloud-snow',
-  HAIL: 'cloud-hail',
-  THUNDER: 'cloud-lightning',
-  TWISTER: 'tornado',
-  UNKNOWN: 'cloud',
-};
+import { gameTimeLabel } from '../../core/utils/game-time.util';
+import { weatherIconName, weatherLabel } from '../../core/utils/weather.util';
 
 @Component({
   selector: 'app-shell',
@@ -84,30 +61,11 @@ export class ShellComponent {
 
   protected readonly unreadMailCount = computed(() => this.messages().filter((m) => !m.read).length);
 
-  protected readonly gameTimeLabel = computed(() => {
-    const time = this.dashboard()?.gameTime;
-    if (!time) {
-      return '—';
-    }
-    const day = String(time.day).padStart(2, '0');
-    const hour = String(time.hour).padStart(2, '0');
-    const minute = String(time.minute).padStart(2, '0');
-    return `Jahr ${time.year} · Monat ${time.month}, Tag ${day} · ${hour}:${minute}`;
-  });
+  protected readonly gameTimeLabel = computed(() => gameTimeLabel(this.dashboard()?.gameTime));
 
-  protected readonly weatherLabel = computed(() => {
-    const weather = this.dashboard()?.weather;
-    if (!weather) {
-      return '—';
-    }
-    const temp = Math.round(weather.temperature);
-    return `${temp}° · ${WEATHER_LABELS[weather.type] ?? weather.type}`;
-  });
+  protected readonly weatherLabel = computed(() => weatherLabel(this.dashboard()?.weather));
 
-  protected readonly weatherIcon = computed(() => {
-    const type = this.dashboard()?.weather?.type;
-    return type ? (WEATHER_ICONS[type] ?? 'cloud') : 'cloud';
-  });
+  protected readonly weatherIcon = computed(() => weatherIconName(this.dashboard()?.weather?.type ?? 'UNKNOWN'));
 
   refresh(): void {
     this.dashboardService.refreshNow();

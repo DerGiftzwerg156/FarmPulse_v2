@@ -5,12 +5,17 @@ import { RouterLink } from '@angular/router';
 import {
   LucideArrowRight,
   LucideBanknote,
+  LucideClock,
+  LucideCloud,
+  LucideCloudHail,
+  LucideCloudLightning,
   LucideCloudRain,
+  LucideCloudSnow,
   LucideLandmark,
   LucideMail,
   LucideMegaphone,
-  LucideSprout,
-  LucideTractor,
+  LucideSun,
+  LucideTornado,
   LucideTriangleAlert,
   LucideUsers,
   LucideWallet,
@@ -26,6 +31,7 @@ import { SparklineComponent } from '../../shared/components/sparkline/sparkline.
 import { MailboxMessageModalComponent } from '../../shared/components/mailbox-message-modal/mailbox-message-modal.component';
 import { fieldCropLabel, fieldGrowthPercent, fieldStatus, fieldStatusLabel } from '../../core/utils/field-status.util';
 import { mailboxCategoryIcon, mailboxGameTimeLabel, mailboxPriorityLabel } from '../../core/utils/mailbox-category.util';
+import { weatherIconName, weatherTypeLabel } from '../../core/utils/weather.util';
 
 const MAILBOX_PREVIEW_LIMIT = 5;
 const FIELDS_PREVIEW_LIMIT = 6;
@@ -43,12 +49,17 @@ const EMPTY_FIELDS: FieldsResponse = { count: 0, totalAreaHa: 0, totalValue: 0, 
     MailboxMessageModalComponent,
     LucideArrowRight,
     LucideBanknote,
+    LucideClock,
+    LucideCloud,
+    LucideCloudHail,
+    LucideCloudLightning,
     LucideCloudRain,
+    LucideCloudSnow,
     LucideLandmark,
     LucideMail,
     LucideMegaphone,
-    LucideSprout,
-    LucideTractor,
+    LucideSun,
+    LucideTornado,
     LucideTriangleAlert,
     LucideUsers,
     LucideWallet,
@@ -71,6 +82,26 @@ export class DashboardComponent {
   protected readonly unreadMailCount = computed(() => this.messages().filter((m) => !m.read).length);
   protected readonly previewFields = computed(() => this.fields().items.slice(0, FIELDS_PREVIEW_LIMIT));
 
+  protected readonly gameDateSub = computed(() => {
+    const time = this.dashboard()?.gameTime;
+    if (!time) {
+      return '—';
+    }
+    const hour = String(time.hour).padStart(2, '0');
+    const minute = String(time.minute).padStart(2, '0');
+    return `Jahr ${time.year} · Monat ${time.month} · ${hour}:${minute}`;
+  });
+
+  protected readonly weatherTemp = computed(() => {
+    const weather = this.dashboard()?.weather;
+    return weather ? Math.round(weather.temperature) + '°' : '—';
+  });
+  protected readonly weatherType = computed(() => {
+    const weather = this.dashboard()?.weather;
+    return weather ? weatherTypeLabel(weather.type) : '—';
+  });
+  protected readonly weatherIcon = computed(() => weatherIconName(this.dashboard()?.weather?.type ?? 'UNKNOWN'));
+
   protected readonly selectedMessage = signal<MailboxMessage | null>(null);
 
   protected readonly cropLabel = fieldCropLabel;
@@ -79,7 +110,7 @@ export class DashboardComponent {
   protected readonly growthPercent = fieldGrowthPercent;
 
   protected readonly categoryIcon = mailboxCategoryIcon;
-  protected readonly gameTimeLabel = mailboxGameTimeLabel;
+  protected readonly messageTimeLabel = mailboxGameTimeLabel;
   protected readonly priorityLabel = mailboxPriorityLabel;
 
   openMessage(message: MailboxMessage): void {

@@ -13,6 +13,30 @@
   }
 
   <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <app-hero-stat
+      label="Spielzeit"
+      [value]="'Tag ' + dashboard()!.gameTime.day"
+      [sub]="gameDateSub()"
+    >
+      <svg icon lucideClock class="h-4 w-4"></svg>
+    </app-hero-stat>
+
+    <app-hero-stat
+      label="Wetter"
+      [value]="weatherTemp()"
+      [sub]="weatherType()"
+    >
+      @switch (weatherIcon()) {
+        @case ('sun') { <svg icon lucideSun class="h-4 w-4"></svg> }
+        @case ('cloud-rain') { <svg icon lucideCloudRain class="h-4 w-4"></svg> }
+        @case ('cloud-snow') { <svg icon lucideCloudSnow class="h-4 w-4"></svg> }
+        @case ('cloud-hail') { <svg icon lucideCloudHail class="h-4 w-4"></svg> }
+        @case ('cloud-lightning') { <svg icon lucideCloudLightning class="h-4 w-4"></svg> }
+        @case ('tornado') { <svg icon lucideTornado class="h-4 w-4"></svg> }
+        @default { <svg icon lucideCloud class="h-4 w-4"></svg> }
+      }
+    </app-hero-stat>
+
     <app-hero-stat label="Kontostand" [value]="(dashboard()!.money | currency:'EUR':'symbol':'1.0-0':'de') ?? ''">
       <svg icon lucideWallet class="h-4 w-4"></svg>
       @if (moneyValues().length > 1) {
@@ -20,21 +44,6 @@
           <app-sparkline [values]="moneyValues()" />
         </div>
       }
-    </app-hero-stat>
-
-    <app-hero-stat
-      label="Fuhrparkwert"
-      [value]="(dashboard()!.fleetValue | currency:'EUR':'symbol':'1.0-0':'de') ?? ''"
-    >
-      <svg icon lucideTractor class="h-4 w-4"></svg>
-    </app-hero-stat>
-
-    <app-hero-stat
-      label="Ertragsprognose"
-      [value]="(fields().totalEstimatedYieldLiters | number:'1.0-0':'de') + ' L'"
-      [sub]="fields().count + ' Parzellen'"
-    >
-      <svg icon lucideSprout class="h-4 w-4"></svg>
     </app-hero-stat>
 
     <app-hero-stat
@@ -157,7 +166,7 @@
                 {{ message.subject }}
               </div>
               <div class="mt-2 flex items-center justify-between">
-                <span class="font-mono text-[10px] text-fp-muted">{{ gameTimeLabel(message) }}</span>
+                <span class="font-mono text-[10px] text-fp-muted">{{ messageTimeLabel(message) }}</span>
                 <span class="font-display text-[9px] uppercase tracking-[0.14em] text-fp-muted">{{ message.category }}</span>
               </div>
             </button>
