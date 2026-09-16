@@ -25,6 +25,10 @@ export const routes: Routes = [
         path: 'fields',
         loadComponent: () => import('./pages/fields/fields.component').then((m) => m.FieldsComponent),
       },
+      {
+        path: 'finance',
+        loadComponent: () => import('./pages/finance/finance.component').then((m) => m.FinanceComponent),
+      },
     ],
   },
   { path: '**', redirectTo: 'start' },
