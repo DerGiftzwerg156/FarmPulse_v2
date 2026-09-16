@@ -21,6 +21,10 @@ export const routes: Routes = [
         path: 'mailbox',
         loadComponent: () => import('./pages/mailbox/mailbox.component').then((m) => m.MailboxComponent),
       },
+      {
+        path: 'fields',
+        loadComponent: () => import('./pages/fields/fields.component').then((m) => m.FieldsComponent),
+      },
     ],
   },
   { path: '**', redirectTo: 'start' },
