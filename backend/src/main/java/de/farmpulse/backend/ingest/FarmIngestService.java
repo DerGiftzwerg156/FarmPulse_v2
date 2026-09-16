@@ -49,7 +49,7 @@ public class FarmIngestService {
 
     @Transactional
     public Optional<Farm> ingestIfChanged() {
-        var file = properties.exchangeDir().resolve(FILENAME);
+        var file = properties.exchangeDirPath().resolve(FILENAME);
         Optional<ExchangeFile<FarmData>> read =
                 fileReader.readIfNewer(file, lastProcessedAt.get(), FarmData.class);
         if (read.isEmpty()) {

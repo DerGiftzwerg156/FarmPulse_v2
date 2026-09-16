@@ -40,7 +40,7 @@ class WorldIngestServiceTest {
         farmRepository = mock(FarmRepository.class);
         snapshotRepository = mock(WorldSnapshotRepository.class);
         WorldProcessingStep passthrough = raw -> raw;
-        BridgeExchangeProperties properties = new BridgeExchangeProperties(exchangeDir, 5000, 30000, 60000);
+        BridgeExchangeProperties properties = new BridgeExchangeProperties(exchangeDir.toString(), 5000, 30000, 60000);
 
         service = new WorldIngestService(properties, fileReader, passthrough, farmRepository, snapshotRepository);
 

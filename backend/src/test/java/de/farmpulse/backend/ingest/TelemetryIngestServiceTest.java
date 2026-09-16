@@ -40,7 +40,7 @@ class TelemetryIngestServiceTest {
         farmRepository = mock(FarmRepository.class);
         snapshotRepository = mock(TelemetrySnapshotRepository.class);
         TelemetryProcessingStep passthrough = raw -> raw;
-        BridgeExchangeProperties properties = new BridgeExchangeProperties(exchangeDir, 5000, 30000, 60000);
+        BridgeExchangeProperties properties = new BridgeExchangeProperties(exchangeDir.toString(), 5000, 30000, 60000);
 
         service = new TelemetryIngestService(properties, fileReader, passthrough, farmRepository, snapshotRepository);
 

@@ -50,7 +50,7 @@ public class TelemetryIngestService {
 
     @Transactional
     public Optional<TelemetrySnapshot> ingestIfChanged() {
-        var file = properties.exchangeDir().resolve(FILENAME);
+        var file = properties.exchangeDirPath().resolve(FILENAME);
         Optional<ExchangeFile<TelemetryData>> read =
                 fileReader.readIfNewer(file, lastProcessedAt.get(), TelemetryData.class);
         if (read.isEmpty()) {

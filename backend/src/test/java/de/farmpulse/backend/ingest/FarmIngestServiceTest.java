@@ -32,7 +32,7 @@ class FarmIngestServiceTest {
         fileReader = mock(ExchangeFileReader.class);
         farmRepository = mock(FarmRepository.class);
         FarmProcessingStep passthrough = raw -> raw;
-        BridgeExchangeProperties properties = new BridgeExchangeProperties(exchangeDir, 5000, 30000, 60000);
+        BridgeExchangeProperties properties = new BridgeExchangeProperties(exchangeDir.toString(), 5000, 30000, 60000);
 
         service = new FarmIngestService(properties, fileReader, passthrough, farmRepository);
     }

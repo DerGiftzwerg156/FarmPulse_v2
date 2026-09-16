@@ -54,7 +54,7 @@ public class WorldIngestService {
 
     @Transactional
     public Optional<WorldSnapshot> ingestIfChanged() {
-        var file = properties.exchangeDir().resolve(FILENAME);
+        var file = properties.exchangeDirPath().resolve(FILENAME);
         Optional<ExchangeFile<WorldData>> read =
                 fileReader.readIfNewer(file, lastProcessedAt.get(), WorldData.class);
         if (read.isEmpty()) {
