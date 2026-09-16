@@ -75,7 +75,8 @@ public class WorldIngestService {
 
         WorldSnapshot snapshot = new WorldSnapshot(farm.get(), data.fleetValue(), exchangeFile.recordedAt(), now);
         data.fields().forEach(field -> snapshot.addField(
-                new FieldSnapshot(field.fieldId(), field.ownerFarmId(), field.sizeHa(), field.price())));
+                new FieldSnapshot(field.fieldId(), field.ownerFarmId(), field.sizeHa(), field.price(),
+                        field.fruitType(), field.growthState(), field.estimatedYieldLiters())));
         data.storages().forEach(storage -> snapshot.addStorage(
                 new StorageSnapshot(storage.fillType(), storage.amount(), storage.capacity())));
 

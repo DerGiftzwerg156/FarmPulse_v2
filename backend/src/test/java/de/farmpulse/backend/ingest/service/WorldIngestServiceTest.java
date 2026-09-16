@@ -64,7 +64,8 @@ class WorldIngestServiceTest {
     void bildetFelderUndLagerbestaendeAufDenSnapshotAb() {
         WorldData data = new WorldData(
                 125000,
-                List.of(new FieldData(1, 1, 4.53, 32000), new FieldData(2, 0, 6.10, 45000)),
+                List.of(new FieldData(1, 1, 4.53, 32000, "WHEAT", 0.5, 15862.5),
+                        new FieldData(2, 0, 6.10, 45000, null, null, null)),
                 List.of(new StorageData("BARLEY", 1200, 20000), new StorageData("WHEAT", 5000, 20000)));
         Instant recordedAt = Instant.parse("2024-06-04T08:30:00Z");
         when(fileReader.readIfNewer(any(), any(), eq(WorldData.class)))
@@ -81,6 +82,9 @@ class WorldIngestServiceTest {
         assertThat(snapshot.getFields()).hasSize(2);
         assertThat(snapshot.getFields().get(0).getFieldId()).isEqualTo(1);
         assertThat(snapshot.getFields().get(0).getWorldSnapshot()).isSameAs(snapshot);
+        assertThat(snapshot.getFields().get(0).getFruitType()).isEqualTo("WHEAT");
+        assertThat(snapshot.getFields().get(0).getGrowthState()).isEqualTo(0.5);
+        assertThat(snapshot.getFields().get(1).getFruitType()).isNull();
         assertThat(snapshot.getStorages()).hasSize(2);
         assertThat(snapshot.getStorages().get(1).getFillType()).isEqualTo("WHEAT");
         assertThat(snapshot.getStorages().get(1).getWorldSnapshot()).isSameAs(snapshot);

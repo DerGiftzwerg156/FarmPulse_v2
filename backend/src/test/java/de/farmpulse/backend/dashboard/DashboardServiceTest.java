@@ -93,9 +93,9 @@ class DashboardServiceTest {
         when(telemetrySnapshotRepository.findTopByFarmIdOrderByRecordedAtDesc(1L)).thenReturn(Optional.of(telemetry));
 
         WorldSnapshot world = new WorldSnapshot(farm, 250_000L, Instant.now(), Instant.now());
-        world.addField(new FieldSnapshot(1, 1, 5.0, 20_000L));
-        world.addField(new FieldSnapshot(2, 0, 3.0, 15_000L));
-        world.addField(new FieldSnapshot(3, 2, 4.0, 18_000L));
+        world.addField(new FieldSnapshot(1, 1, 5.0, 20_000L, "WHEAT", 0.5, 12500.0));
+        world.addField(new FieldSnapshot(2, 0, 3.0, 15_000L, null, null, null));
+        world.addField(new FieldSnapshot(3, 2, 4.0, 18_000L, null, null, null));
         world.addStorage(new StorageSnapshot("WHEAT", 9_500L, 10_000L));
         world.addStorage(new StorageSnapshot("CANOLA", 100L, 5_000L));
         when(worldSnapshotRepository.findTopByFarmIdOrderByRecordedAtDesc(1L)).thenReturn(Optional.of(world));
