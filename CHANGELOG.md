@@ -14,7 +14,9 @@ Versionsnummern der Bridge folgen [Semantic Versioning](https://semver.org/lang/
   Entitaeten in MariaDB speichert (Schema per Flyway-Migrationen). Siehe
   `backend/README.md`.
 - Projekt-Grundlagen ergaenzt: Root-`README.md`, `LICENSE` (MIT),
-  `CONTRIBUTING.md`, GitHub-Actions-Testpipeline, PR-/Issue-Templates.
+  `CONTRIBUTING.md`, GitHub-Actions-Testpipeline, PR-/Issue-Templates,
+  Dependabot (`.github/dependabot.yml`: Maven/Docker fuer `backend/`,
+  GitHub Actions).
 - `season`/`weather` aus `telemetry.json` entfernt und `WeatherCollector`
   komplett entfernt, da dessen einziger Zweck (Jahreszeit-/Wetter-Werte fuer
   `telemetry.json`) damit entfaellt.
