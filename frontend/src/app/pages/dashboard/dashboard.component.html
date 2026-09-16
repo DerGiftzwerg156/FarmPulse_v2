@@ -1,171 +1,142 @@
-<div class="min-h-screen bg-fp-bg text-fp-text">
-  <aside class="fixed inset-y-0 left-0 z-30 hidden w-16 flex-col items-center border-r border-fp-border bg-fp-bg py-4 md:flex">
-    <div class="mb-6 flex h-10 w-10 items-center justify-center rounded-md border border-fp-accent/50 bg-fp-panel font-display text-lg font-bold text-fp-accent">
-      F
-    </div>
-    <nav class="flex flex-1 flex-col items-center gap-2">
-      <span class="group relative flex h-11 w-11 items-center justify-center rounded-md border border-fp-accent/60 bg-fp-accent/10 text-fp-accent">
-        <svg lucideLayoutDashboard class="h-5 w-5"></svg>
-        <span class="pointer-events-none absolute left-14 z-50 whitespace-nowrap rounded-sm border border-fp-border bg-fp-panel px-2 py-1 font-display text-[10px] uppercase tracking-[0.14em] text-fp-text opacity-0 transition-opacity group-hover:opacity-100">
-          Dashboard
-        </span>
-      </span>
-
-      @for (item of [
-        { label: 'Flotte', icon: 'tractor' },
-        { label: 'Felder', icon: 'sprout' },
-        { label: 'Finanzen', icon: 'wallet' },
-        { label: 'Postfach', icon: 'mail' },
-        { label: 'Einstellungen', icon: 'settings' },
-      ]; track item.label) {
-        <span
-          class="group relative flex h-11 w-11 cursor-not-allowed items-center justify-center rounded-md border border-transparent text-fp-muted opacity-40"
-          [title]="item.label + ' (bald verfügbar)'"
-        >
-          @switch (item.icon) {
-            @case ('tractor') { <svg lucideTractor class="h-5 w-5"></svg> }
-            @case ('sprout') { <svg lucideSprout class="h-5 w-5"></svg> }
-            @case ('wallet') { <svg lucideWallet class="h-5 w-5"></svg> }
-            @case ('mail') { <svg lucideMail class="h-5 w-5"></svg> }
-            @case ('settings') { <svg lucideSettings class="h-5 w-5"></svg> }
-          }
-        </span>
+@if (!dashboard()) {
+  <p class="font-body text-sm text-fp-muted">Lade Daten…</p>
+} @else {
+  @if ((dashboard()?.alerts?.length ?? 0) > 0) {
+    <div class="mb-4 space-y-2">
+      @for (alert of dashboard()!.alerts; track alert.message) {
+        <div class="flex items-center gap-2 rounded-md border border-fp-warn/30 bg-fp-warn/5 p-2.5">
+          <svg lucideTriangleAlert class="h-4 w-4 shrink-0 text-fp-warn"></svg>
+          <span class="font-body text-[12px] text-fp-text">{{ alert.message }}</span>
+        </div>
       }
-    </nav>
-    <div class="mt-auto flex flex-col items-center gap-1">
-      <svg lucideActivity class="h-4 w-4 text-fp-accent"></svg>
-      <span class="font-display text-[8px] uppercase tracking-[0.18em] text-fp-accent">Live</span>
     </div>
-  </aside>
+  }
 
-  <div class="md:pl-16">
-    <header class="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-fp-border bg-fp-bg/90 px-4 py-2.5 backdrop-blur md:px-6">
-      <div class="flex items-center gap-2">
-        <svg lucideServer class="h-4 w-4 text-fp-accent"></svg>
-        <div class="leading-tight">
-          <div class="font-display text-[11px] font-semibold uppercase tracking-[0.14em] text-fp-text">
-            {{ dashboard()?.farm?.name ?? 'Unbenannter Hof' }}
-          </div>
-          <div class="font-body text-[10px] text-fp-muted">
-            {{ dashboard()?.farm?.playerName ?? '—' }}
-          </div>
+  <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <app-hero-stat label="Kontostand" [value]="(dashboard()!.money | currency:'EUR':'symbol':'1.0-0':'de') ?? ''">
+      <svg icon lucideWallet class="h-4 w-4"></svg>
+      @if (moneyValues().length > 1) {
+        <div trend class="mt-2">
+          <app-sparkline [values]="moneyValues()" />
         </div>
-      </div>
-      <div class="flex items-center gap-2 sm:gap-3">
-        <div class="hidden items-center gap-1.5 rounded-sm border border-fp-border bg-fp-panel px-2 py-1 sm:flex">
-          <svg lucideClock class="h-3.5 w-3.5 text-fp-accent"></svg>
-          <span class="font-display text-[11px] text-fp-text">{{ gameTimeLabel() }}</span>
-        </div>
-        <button
-          type="button"
-          class="flex items-center gap-1.5 rounded-sm border border-fp-accent/50 bg-fp-accent/10 px-3 py-1.5 font-display text-[11px] font-semibold uppercase tracking-[0.14em] text-fp-accent transition hover:bg-fp-accent/20"
-          (click)="refresh()"
-        >
-          <svg lucideRefreshCw class="h-3.5 w-3.5"></svg>
-          <span class="hidden sm:inline">Sync</span>
-        </button>
-      </div>
-    </header>
+      }
+    </app-hero-stat>
 
-    <main class="mx-auto max-w-[1500px] px-3 py-4 pb-16 md:px-6 md:pb-8">
-      @if (!dashboard()) {
-        <p class="font-body text-sm text-fp-muted">Lade Daten…</p>
+    <app-hero-stat
+      label="Fuhrparkwert"
+      [value]="(dashboard()!.fleetValue | currency:'EUR':'symbol':'1.0-0':'de') ?? ''"
+    >
+      <svg icon lucideTractor class="h-4 w-4"></svg>
+    </app-hero-stat>
+
+    <app-hero-stat
+      label="Felder"
+      [value]="dashboard()!.fields.count + ''"
+      [sub]="(dashboard()!.fields.totalAreaHa | number:'1.0-1':'de') + ' ha gesamt'"
+    >
+      <svg icon lucideSprout class="h-4 w-4"></svg>
+    </app-hero-stat>
+
+    <app-hero-stat
+      label="Unread Mail"
+      [value]="unreadMailCount() + ''"
+      sub="neue Nachrichten"
+      [accent]="unreadMailCount() > 0 ? 'warn' : 'accent'"
+    >
+      <svg icon lucideMail class="h-4 w-4"></svg>
+    </app-hero-stat>
+  </div>
+
+  <div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[65fr_35fr]">
+    <section class="rounded-md border border-fp-border bg-fp-panel p-4">
+      <h3 class="mb-3 font-display text-[11px] font-semibold uppercase tracking-[0.18em] text-fp-muted">
+        Felder
+      </h3>
+      @if (dashboard()!.fields.items.length === 0) {
+        <p class="font-body text-sm text-fp-muted">Noch keine eigenen Felder bekannt.</p>
       } @else {
-        @if ((dashboard()?.alerts?.length ?? 0) > 0) {
-          <div class="mb-4 space-y-2">
-            @for (alert of dashboard()!.alerts; track alert.message) {
-              <div class="flex items-center gap-2 rounded-md border border-fp-warn/30 bg-fp-warn/5 p-2.5">
-                <svg lucideTriangleAlert class="h-4 w-4 shrink-0 text-fp-warn"></svg>
-                <span class="font-body text-[12px] text-fp-text">{{ alert.message }}</span>
+        <div class="space-y-2">
+          @for (field of dashboard()!.fields.items; track field.fieldId) {
+            <div class="flex items-center justify-between rounded-md border border-fp-border bg-fp-bg p-3">
+              <span class="font-display text-sm font-semibold text-fp-text">Feld {{ field.fieldId }}</span>
+              <span class="font-body text-[12px] text-fp-muted">{{ field.sizeHa | number:'1.0-1':'de' }} ha</span>
+              <span class="font-body text-[12px] text-fp-text">{{ field.price | currency:'EUR':'symbol':'1.0-0':'de' }}</span>
+            </div>
+          }
+        </div>
+      }
+    </section>
+
+    <section class="flex flex-col rounded-md border border-fp-border bg-fp-panel p-4">
+      <div class="mb-3 flex items-center justify-between gap-2">
+        <h3 class="font-display text-[11px] font-semibold uppercase tracking-[0.18em] text-fp-muted">
+          Farm Mailbox
+        </h3>
+        @if (unreadMailCount() > 0) {
+          <span class="font-display text-[10px] uppercase tracking-[0.12em] text-fp-warn">{{ unreadMailCount() }} ungelesen</span>
+        }
+      </div>
+      @if (previewMessages().length === 0) {
+        <p class="font-body text-sm text-fp-muted">Noch keine Nachrichten.</p>
+      } @else {
+        <div class="flex flex-1 flex-col gap-2">
+          @for (message of previewMessages(); track message.id) {
+            <button
+              type="button"
+              class="rounded-md border bg-fp-bg p-3 text-left transition hover:border-fp-accent/40"
+              [class.border-fp-accent]="!message.read"
+              [class.border-opacity-30]="!message.read"
+              [class.border-fp-border]="message.read"
+              (click)="markRead(message.id)"
+            >
+              <div class="flex items-center justify-between">
+                <span class="font-display text-[11px] font-semibold" [class.text-fp-text]="!message.read" [class.text-fp-muted]="message.read">
+                  {{ message.sender }}
+                </span>
+                <span class="font-mono text-[10px] text-fp-muted">Tag {{ message.gameDay }}</span>
               </div>
-            }
+              <div class="mt-1 line-clamp-2 font-body text-[12px]" [class.text-fp-text]="!message.read" [class.text-fp-muted]="message.read">
+                {{ message.subject }}
+              </div>
+            </button>
+          }
+        </div>
+      }
+      <a
+        routerLink="/mailbox"
+        class="mt-3 flex items-center justify-center gap-1.5 rounded-md border border-fp-border bg-fp-bg py-2 font-display text-[11px] font-semibold uppercase tracking-[0.14em] text-fp-text transition hover:border-fp-accent/50 hover:text-fp-accent"
+      >
+        Postfach öffnen
+        <svg lucideArrowRight class="h-3.5 w-3.5"></svg>
+      </a>
+    </section>
+  </div>
+
+  <section class="mt-4 rounded-md border border-fp-border bg-fp-panel p-4">
+    <h3 class="mb-3 font-display text-[11px] font-semibold uppercase tracking-[0.18em] text-fp-muted">
+      Lagerbestände
+    </h3>
+    @if (dashboard()!.storages.length === 0) {
+      <p class="font-body text-sm text-fp-muted">Noch keine Lagerdaten bekannt.</p>
+    } @else {
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        @for (storage of dashboard()!.storages; track storage.fillType) {
+          <div>
+            <div class="mb-1 flex items-center justify-between">
+              <span class="font-display text-[10px] uppercase tracking-[0.14em] text-fp-muted">{{ storage.fillType }}</span>
+              <span class="font-display text-[11px] font-semibold text-fp-text">{{ storage.fillPercentage | number:'1.0-0':'de' }}%</span>
+            </div>
+            <div class="h-1.5 w-full overflow-hidden rounded-full bg-fp-bg ring-1 ring-inset ring-fp-border">
+              <div
+                class="h-full rounded-full transition-all"
+                [class.bg-fp-accent]="storage.fillPercentage < 90"
+                [class.bg-fp-warn]="storage.fillPercentage >= 90"
+                [style.width.%]="storage.fillPercentage"
+              ></div>
+            </div>
           </div>
         }
-
-        <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <app-hero-stat label="Kontostand" [value]="(dashboard()!.money | currency:'EUR':'symbol':'1.0-0':'de') ?? ''">
-            <svg icon lucideWallet class="h-4 w-4"></svg>
-            @if (moneyValues().length > 1) {
-              <div trend class="mt-2">
-                <app-sparkline [values]="moneyValues()" />
-              </div>
-            }
-          </app-hero-stat>
-
-          <app-hero-stat
-            label="Fuhrparkwert"
-            [value]="(dashboard()!.fleetValue | currency:'EUR':'symbol':'1.0-0':'de') ?? ''"
-          >
-            <svg icon lucideTractor class="h-4 w-4"></svg>
-          </app-hero-stat>
-
-          <app-hero-stat
-            label="Felder"
-            [value]="dashboard()!.fields.count + ''"
-            [sub]="(dashboard()!.fields.totalAreaHa | number:'1.0-1':'de') + ' ha gesamt'"
-          >
-            <svg icon lucideSprout class="h-4 w-4"></svg>
-          </app-hero-stat>
-
-          <app-hero-stat
-            label="Lagerauslastung"
-            [value]="storageFillPercent() !== null ? storageFillPercent() + '%' : '—'"
-            sub="Ø Füllstand aller Lager"
-            [accent]="(storageFillPercent() ?? 0) >= 90 ? 'warn' : 'accent'"
-          >
-            <svg icon lucideWarehouse class="h-4 w-4"></svg>
-          </app-hero-stat>
-        </div>
-
-        <div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[65fr_35fr]">
-          <section class="rounded-md border border-fp-border bg-fp-panel p-4">
-            <h3 class="mb-3 font-display text-[11px] font-semibold uppercase tracking-[0.18em] text-fp-muted">
-              Felder
-            </h3>
-            @if (dashboard()!.fields.items.length === 0) {
-              <p class="font-body text-sm text-fp-muted">Noch keine eigenen Felder bekannt.</p>
-            } @else {
-              <div class="space-y-2">
-                @for (field of dashboard()!.fields.items; track field.fieldId) {
-                  <div class="flex items-center justify-between rounded-md border border-fp-border bg-fp-bg p-3">
-                    <span class="font-display text-sm font-semibold text-fp-text">Feld {{ field.fieldId }}</span>
-                    <span class="font-body text-[12px] text-fp-muted">{{ field.sizeHa | number:'1.0-1':'de' }} ha</span>
-                    <span class="font-body text-[12px] text-fp-text">{{ field.price | currency:'EUR':'symbol':'1.0-0':'de' }}</span>
-                  </div>
-                }
-              </div>
-            }
-          </section>
-
-          <section class="rounded-md border border-fp-border bg-fp-panel p-4">
-            <h3 class="mb-3 font-display text-[11px] font-semibold uppercase tracking-[0.18em] text-fp-muted">
-              Lagerbestände
-            </h3>
-            @if (dashboard()!.storages.length === 0) {
-              <p class="font-body text-sm text-fp-muted">Noch keine Lagerdaten bekannt.</p>
-            } @else {
-              <div class="space-y-3">
-                @for (storage of dashboard()!.storages; track storage.fillType) {
-                  <div>
-                    <div class="mb-1 flex items-center justify-between">
-                      <span class="font-display text-[10px] uppercase tracking-[0.14em] text-fp-muted">{{ storage.fillType }}</span>
-                      <span class="font-display text-[11px] font-semibold text-fp-text">{{ storage.fillPercentage | number:'1.0-0':'de' }}%</span>
-                    </div>
-                    <div class="h-1.5 w-full overflow-hidden rounded-full bg-fp-bg ring-1 ring-inset ring-fp-border">
-                      <div
-                        class="h-full rounded-full transition-all"
-                        [class.bg-fp-accent]="storage.fillPercentage < 90"
-                        [class.bg-fp-warn]="storage.fillPercentage >= 90"
-                        [style.width.%]="storage.fillPercentage"
-                      ></div>
-                    </div>
-                  </div>
-                }
-              </div>
-            }
-          </section>
-        </div>
-      }
-    </main>
-  </div>
-</div>
+      </div>
+    }
+  </section>
+}
