@@ -13,6 +13,13 @@ updates:
     schedule:
       interval: weekly
 
+  # Frontend: npm-Abhaengigkeiten aus frontend/package.json (Angular,
+  # @lucide/angular, Tailwind CSS, ...)
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+
   # GitHub-Actions-Workflows unter .github/workflows/ (z.B. actions/checkout,
   # actions/setup-java)
   - package-ecosystem: github-actions

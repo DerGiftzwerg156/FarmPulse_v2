@@ -17,8 +17,9 @@ assignees: ''
 ## Betroffener Bereich
 
 - [ ] Bridge-Export (`telemetry.json`/`world.json`/`farm.json`)
+- [ ] Backend (REST-Schnittstelle, Datenmodell)
+- [ ] Frontend (Angular-Dashboard)
 - [ ] Tools (`mock-bridge.sh` o.ae.)
-- [ ] FarmPulse Core (noch nicht Teil dieses Repos)
 - [ ] Sonstiges
 
 ## Alternativen
