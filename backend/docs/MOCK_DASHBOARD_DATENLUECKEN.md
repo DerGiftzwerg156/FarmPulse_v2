@@ -136,9 +136,29 @@ eingesetzt werden sollen, ist in `MailboxGenerationService.selectTemplate()`
 explizit mit `TODO(KI-Integration)` markiert. Frontend: Dashboard zeigt eine
 Vorschau der letzten 5 Nachrichten, die `/mailbox`-Seite (Vorlage
 `MockDashboard/Postfach.html`) die vollständige Liste mit Suche/Filtern;
-beide öffnen Nachrichten in einem Modal. Es existiert weiterhin keine
-Marktpreis-Datenquelle (z.B. Weizenpreis in €/t mit Trend) in der Bridge,
-auf die sich generierte Nachrichten inhaltlich beziehen könnten.
+beide öffnen Nachrichten in einem Modal. Seit der Marktpreis-Anbindung (siehe
+Abschnitt "Lagerbestände: Marktpreise" unten) existiert zwar eine
+Preis-Datenquelle je Fill-Typ in `world.json`/`GET /api/dashboard`, die
+`MailboxGenerationService` nutzt sie aber noch **nicht** - die generierten
+Nachrichten bleiben rein vorlagenbasiert und beziehen sich inhaltlich nicht
+auf echte Kontostand-/Preisänderungen. Das waere ein sinnvoller nächster
+Schritt für `TODO(KI-Integration)`.
+
+## Lagerbestände: Marktpreise — ✅ umgesetzt
+
+Der Mock (`MockDashboard/Dashboard.html`, "Economic Market Ticker") zeigt je
+Fruchtart einen aktuellen Preis samt Trend. Umgesetzt wurde eine auf
+Lagerbestände bezogene Variante: `world.json`/`storages[]` liefert je
+Fill-Typ zusätzlich `currentPricePer1000L` (aktueller Marktpreis),
+`bestPricePer1000L`/`bestPricePeriod`/`bestPricePeriodLabel` (höchster Preis
+der letzten 12 FS25-"Perioden" samt aufgelöstem Monatsnamen) - siehe
+`Bridge/scripts/PriceCollector.lua` sowie `Bridge/README.md`, Abschnitt
+"Marktpreise", für die Konfidenzeinordnung der zugrunde liegenden Engine-
+Aufrufe. Alle vier Felder sind nullable, falls die Bridge den Preis für
+einen Fill-Typ nicht lesen konnte. Frontend: die `/storage`-Seite zeigt
+beide Preise je Lagerbestand; kein "Trend" (Preis vs. letzte Periode) und
+kein fruchtartenweiter Ticker unabhängig vom Lagerbestand - das wäre die
+naheliegende Erweiterung, sollte sie benötigt werden.
 
 ## Was das Dashboard zeigt
 

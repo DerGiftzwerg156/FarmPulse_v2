@@ -96,8 +96,8 @@ class DashboardServiceTest {
         world.addField(new FieldSnapshot(1, 1, 5.0, 20_000L, "WHEAT", 0.5, 12500.0));
         world.addField(new FieldSnapshot(2, 0, 3.0, 15_000L, null, null, null));
         world.addField(new FieldSnapshot(3, 2, 4.0, 18_000L, null, null, null));
-        world.addStorage(new StorageSnapshot("WHEAT", 9_500L, 10_000L));
-        world.addStorage(new StorageSnapshot("CANOLA", 100L, 5_000L));
+        world.addStorage(new StorageSnapshot("WHEAT", 9_500L, 10_000L, 218.4, 254.1, 3, "März"));
+        world.addStorage(new StorageSnapshot("CANOLA", 100L, 5_000L, null, null, null, null));
         when(worldSnapshotRepository.findTopByFarmIdOrderByRecordedAtDesc(1L)).thenReturn(Optional.of(world));
 
         DashboardResponse response = service.getDashboard();
@@ -108,6 +108,11 @@ class DashboardServiceTest {
         assertThat(response.fields().totalValue()).isEqualTo(20_000L);
         assertThat(response.storages()).hasSize(2);
         assertThat(response.storages().get(0).fillPercentage()).isEqualTo(95.0);
+        assertThat(response.storages().get(0).currentPricePer1000L()).isEqualTo(218.4);
+        assertThat(response.storages().get(0).bestPricePer1000L()).isEqualTo(254.1);
+        assertThat(response.storages().get(0).bestPricePeriod()).isEqualTo(3);
+        assertThat(response.storages().get(0).bestPricePeriodLabel()).isEqualTo("März");
+        assertThat(response.storages().get(1).currentPricePer1000L()).isNull();
     }
 
     @Test
@@ -119,7 +124,7 @@ class DashboardServiceTest {
         when(telemetrySnapshotRepository.findTopByFarmIdOrderByRecordedAtDesc(1L)).thenReturn(Optional.of(telemetry));
 
         WorldSnapshot world = new WorldSnapshot(farm, 250_000L, Instant.now(), Instant.now());
-        world.addStorage(new StorageSnapshot("WHEAT", 9_500L, 10_000L));
+        world.addStorage(new StorageSnapshot("WHEAT", 9_500L, 10_000L, null, null, null, null));
         when(worldSnapshotRepository.findTopByFarmIdOrderByRecordedAtDesc(1L)).thenReturn(Optional.of(world));
 
         DashboardResponse response = service.getDashboard();

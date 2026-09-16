@@ -12,7 +12,8 @@ Aenderungsfrequenz statt eines einzigen monolithischen Schnappschusses:
   Feld-/Farmland-Informationen fuer **alle** Felder der Karte (inkl.
   optionaler Anbaudaten - Fruchtart, Wachstumsfortschritt, Ertragsschaetzung -
   fuer die Ertragsprognose im Frontend), aggregierter Fuhrpark-Wert,
-  Lager-/Silobestaende.
+  Lager-/Silobestaende (inkl. aktuellem Marktpreis sowie bestem Preis +
+  Periode der letzten 12 FS25-Perioden je Fill-Typ).
 - **`farm.json`** (einmalig bei Aktivierung, aendert sich praktisch nie):
   Hofname, Spielername.
 
@@ -82,6 +83,24 @@ kam zusaetzlich eine weitere Quelle dazu (siehe Tabelle unten):
    `FieldState`/`FruitTypeDesc` als echter, wenn auch nicht offiziell
    dokumentierter Basisspiel-Quellcode.
 
+Fuer Marktpreise (aktueller Preis, Preishistorie je Fill-Typ) kamen zwei
+weitere Quellen dazu:
+
+10. **[FarmingSimulator25_dataS](https://github.com/maxkra1985/FarmingSimulator25_dataS)**
+    (maxkra1985) - ein weiterer, unabhaengiger Dekompilat-Dump von
+    `dataS/scripts` aus FS25 (u.a. `economy/EconomyManager.lua`,
+    `economy/PricingHistoryEvent.lua`/`PricingHistoryInitialEvent.lua`,
+    `fillTypes/FillTypeDesc.lua`, `gui/InGameMenuStatisticsFrame.lua`,
+    `I18N.lua`) - ueber sechs Dateien hinweg intern konsistent (Preis-
+    Historie wird an derselben Struktur geschrieben, synchronisiert und von
+    der Ingame-Preisstatistik-Ansicht gelesen).
+11. **[VDTelemetry](https://github.com/VertexDezign/VDTelemetry)** (VertexDezign) - ein echter,
+    aktiv gepflegter FS25-Telemetrie-Mod mit vergleichbarem Zweck wie
+    FarmPulse, dessen `PricesExporter.lua` exakt dieselbe Aufgabe loest
+    ("bester Preis + welche Periode" aus `fillType.economy.history`
+    ermitteln) - staerkste verfuegbare Bestaetigung, da unabhaengig
+    entwickelt und fuer denselben Anwendungsfall produktiv im Einsatz.
+
 | Wert | Verwendeter Ansatz | Status |
 |---|---|---|
 | Stunde/Minute | `g_currentMission.environment.dayTime`, in Millisekunden seit Mitternacht, umgerechnet in Stunde/Minute | **Bestaetigt** (Quelle 2): `AbstractMission:getMinutesLeft()` verrechnet `environment.dayTime` direkt mit `24*60*60*1000` |
@@ -100,6 +119,9 @@ kam zusaetzlich eine weitere Quelle dazu (siehe Tabelle unten):
 | Lager-/Silobestaende (`storages`) | `g_currentMission.productionChainManager.productionPoints`, je Punkt `.storage.fillLevels`/`.storage.capacities` (indiziert nach Fill-Typ, aufgeloest ueber `g_fillTypeManager:getFillTypeNameByIndex()`) | **Teilweise bestaetigt** (Quelle 7, FS25_UpgradableFactories, echter veroeffentlichter Mod, fuer die Struktur von `.storage.fillLevels`/`.capacities` und `productionChainManager.productionPoints`): deckt damit bestaetigt Produktionspunkt-Lager ab. Ob dieselbe Struktur auch frei platzierte Hof-Silos (Placeables ohne Produktionspunkt-Charakter) umfasst, ist **nicht** bestaetigt - eine Web-Suche fand Hinweise auf `g_currentMission.placeableSystem.placeables`, gefiltert nach einer Lager-Spezialisierung (`spec_objectStorage`/`spec_palletSpawner`), als moeglichen zusaetzlichen Weg, aber ohne handfesten Quellcode-Beleg. Siehe Abschnitt "Bekannte Luecken" unten |
 | Temperatur (`temperature`) | `g_currentMission.environment.weather:getCurrentTemperature()` | **Bestaetigt** (Quelle 5 FS25_Tardis-Umfeld sowie Basisspiel-Skripte): mehrere echte FS25-Basisspiel-Skripte (`vehicles/specializations/Washable.lua`, `vehicles/VehicleSystem.lua`, `vehicles/specializations/Enterable.lua` - dort direkt an die Cockpit-Aussentemperaturanzeige gebunden) lesen an exakt dieser Stelle dieselbe Methode |
 | Wettertyp (`weatherType`) | Strategie 1: `weather.forecast:dataForTime(environment.currentMonotonicDay, environment.dayTime)` -> `weather:getWeatherObjectByIndex(season, objectIndex)` -> `WeatherType.getName(weatherObject.weatherType)`. Strategie 2 (Fallback): grobe Ableitung aus `weather:getIsHailing()`/`getIsSnowing()`/`getIsRaining()` | Strategie 1 **hergeleitet, nicht bestaetigt** (Quelle 8): Die `Weather`-Klasse selbst ist von GIANTS weder im SDK-Dump noch in der LUADOC offengelegt: die Aufrufkette wurde stattdessen aus echtem HUD-Nachbau-Code (Quelle 8) uebernommen. Die `WeatherType`-Konstanten (`SUN`/`PARTIALLY_CLOUDY`/`CLOUDY`/`RAIN`/`SNOW`/`HAIL`/`TWISTER`/`THUNDER`) selbst sind dagegen **bestaetigt** (Basisspiel `gui/hud/GameInfoDisplay.lua`). Strategie 2 nutzt ausschliesslich **bestaetigte** Einzelmethoden (Basisspiel `objects/SunAdmirer.lua`, `placeables/BeehiveSystem.lua`), liefert dafuer nur eine grobe Naeherung ohne "bewoelkt"/"Gewitter"/"Tornado" |
+| Aktueller Marktpreis (`currentPricePer1000L`) | `g_currentMission.economyManager:getPricePerLiter(fillType.index)` (Euro je Liter, × 1000 fuer den Export - siehe Dateiformat) | **Bestaetigt** (Quelle 10, dekompilierter Basisspiel-Quellcode, sowie unabhaengig durch ~10 echte, aktuell gepflegte FS25-Mods, die exakt dieselbe Signatur in Produktionscode aufrufen, u.a. `FS25_ForestryHelper`, `FS25_AutoDrive`, `VDTelemetry`, `FS25_MarketDynamics` - ungewoehnlich breite unabhaengige Bestaetigung fuer einen nicht offiziell dokumentierten Aufruf). Liefert einen **globalen** Marktpreis, keinen Preis je Verkaufsstelle (die einzelnen Verkaufsstellen/`SellingStation`-Objekte koennen den Basispreis noch mit stationsspezifischen Faktoren multiplizieren, das wird hier bewusst nicht nachgebildet) |
+| Bester Preis + Periode (`bestPricePer1000L`/`bestPricePeriod`) | `g_fillTypeManager:getFillTypeByName(name).economy.history` (12-Eintraege-Tabelle, Index 1-12 = FS25-"Periode"), Maximum + Index ermittelt in `PriceCollector.findBestPrice()` | **Bestaetigt** (Quelle 10, ueber sechs Basisspiel-Dateien hinweg intern konsistent: `EconomyManager:updateFillTypeHistory()` befuellt die Tabelle, `PricingHistoryEvent`/`PricingHistoryInitialEvent` synchronisieren sie, `InGameMenuStatisticsFrame.lua` liest exakt dieselbe Tabelle fuer die Ingame-Preisstatistik-Ansicht). Zusaetzlich durch Quelle 11 (`VDTelemetry`, echter, aktiv gepflegter FS25-Mod) bestaetigt, der denselben "bester Preis + Periode"-Algorithmus gegen dieselbe Datenstruktur produktiv einsetzt. Konnte **nicht** gegen die offizielle GDN-Dokumentation verifiziert werden (dort nicht erreichbar aus dieser Entwicklungsumgebung) |
+| Perioden-Monatsname (`bestPricePeriodLabel`) | `g_i18n:formatPeriod(period)` | **Bestaetigt** (Quelle 10): dieselbe Funktion, die die Ingame-Preisstatistik-Ansicht fuer die Monatsbeschriftung nutzt. **Wichtig**: Periode `1` ist NICHT zwingend Januar - `formatPeriod()` verschiebt die Zuordnung um den Kartenbreitengrad (`environment.daylight.latitude`, Nord-/Suedhalbkugel) |
 
 Ein vollstaendiger erneuter Abgleich aller urspruenglichen Werte
 ausschliesslich gegen die Community-LUADOC (Quelle 1) bestaetigt: Diese deckt
@@ -138,6 +160,15 @@ Bridge abstuerzt. Das Verhalten laesst sich also risikofrei ausprobieren.
   Rohwerte (Wachstumsstand, Literwert) intern gelesen werden konnten - siehe
   `FieldCollector.computeCropInfo()`, das ohne `fruitTypeName` bewusst nichts
   zurueckgibt, statt eine unbenannte Frucht zu exportieren.
+- **`bestPricePer1000L`/`bestPricePeriod`** koennen fuer einen Fill-Typ `null`
+  bleiben, obwohl `currentPricePer1000L` erfolgreich gelesen wurde: die
+  Preishistorie (`fillType.economy.history`) wird laut Quelle 10 nur
+  synchronisiert, solange `fillType.economy.sychronizeData` (Standard `true`)
+  nicht von einer Mod-Fruchtart ueberschrieben wurde. Betrifft voraussichtlich
+  nur seltene Custom-Fill-Typen, keine Basisspiel-Fruchtarten. Ausserdem ist
+  die erste Preishistorie eines neuen Spielstands ggf. noch nicht vollstaendig
+  befuellt (nur bereits durchlaufene Perioden haben einen Wert) - das ist kein
+  Bug, sondern der erwartete Zustand kurz nach Spielstart.
 
 ## Test-Feedback-Loop (bitte einmal durchfuehren)
 
@@ -179,6 +210,12 @@ Bridge abstuerzt. Das Verhalten laesst sich also risikofrei ausprobieren.
     `fruitType`/`growthState`/`estimatedYieldLiters` bei einem bekannt
     bestellten Feld dauerhaft `null`, siehe Abschnitt "Bekannte Luecken"
     oben - das ist der erwartete Fallback, kein Absturz.
+7c. In `world.json` bei einem `storages`-Eintrag pruefen, ob
+    `currentPricePer1000L` grob zum im Spiel angezeigten Verkaufspreis dieses
+    Fill-Typs passt (z.B. an einer Verkaufsstelle/im Preis-Statistik-Menue
+    ablesbar), und ob `bestPricePer1000L`/`bestPricePeriodLabel` zu einem
+    dort sichtbaren Preis-Hoch der letzten 12 Perioden passen. Bleiben diese
+    Felder dauerhaft `null`, siehe Abschnitt "Bekannte Luecken" oben.
 8. In `farm.json` pruefen, ob `farmName`/`playerName` mit dem im Spiel
    gewaehlten Hof-/Spielernamen uebereinstimmen.
 9. Diese Beobachtungen (Log-Auszug + ob die Werte stimmen, je Datei) 
@@ -261,8 +298,12 @@ sondern per JSON-Parser auf die benannten Felder zugreifen.
       "fruitType": "WHEAT", "growthState": 0.65, "estimatedYieldLiters": 27716.5 }
   ],
   "storages": [
-    { "fillType": "BARLEY", "amount": 1200, "capacity": 20000 },
-    { "fillType": "WHEAT", "amount": 5000, "capacity": 20000 }
+    { "fillType": "BARLEY", "amount": 1200, "capacity": 20000,
+      "currentPricePer1000L": 175.20, "bestPricePer1000L": 198.50,
+      "bestPricePeriod": 7, "bestPricePeriodLabel": "Juli" },
+    { "fillType": "WHEAT", "amount": 5000, "capacity": 20000,
+      "currentPricePer1000L": 218.40, "bestPricePer1000L": 254.10,
+      "bestPricePeriod": 3, "bestPricePeriodLabel": "März" }
   ]
 }
 ```
@@ -293,6 +334,19 @@ sondern per JSON-Parser auf die benannten Felder zugreifen.
       nicht auflösbar.
     - `amount`: aktuell gelagerte Menge.
     - `capacity`: Gesamtkapazitaet fuer diesen Fill-Typ.
+    - `currentPricePer1000L`: aktueller Marktpreis in Euro je 1000 Liter
+      (globaler Preis, nicht je Verkaufsstelle - siehe Tabelle unten), oder
+      `null` falls nicht auflösbar.
+    - `bestPricePer1000L`: hoechster Preis der letzten 12 FS25-"Perioden"
+      (siehe `bestPricePeriod`), oder `null` falls keine Preishistorie
+      gelesen werden konnte.
+    - `bestPricePeriod`: die FS25-Periode (`1`-`12`) mit dem hoechsten Preis.
+      **Keine** Kalendermonate - Periode `1` ist auf einer Nordhalbkugel-
+      Standardkarte z.B. Maerz, nicht Januar (siehe `bestPricePeriodLabel`
+      sowie Tabelle unten). `null` wie bei `bestPricePer1000L`.
+    - `bestPricePeriodLabel`: bereits zu einem lokalisierten Monatsnamen
+      aufgeloeste `bestPricePeriod` (z.B. `"März"`, in der im Spiel
+      eingestellten Sprache), oder `null` wie bei `bestPricePeriod`.
 
 ## Dateiformat: `farm.json`
 
@@ -318,6 +372,7 @@ Bridge/
     ├── FieldCollector.lua       Normalisierung der Feld-/Farmland-Liste (keine GIANTS-Abhaengigkeit)
     ├── VehicleCollector.lua     Aggregation des Fuhrpark-Werts (keine GIANTS-Abhaengigkeit)
     ├── StorageCollector.lua     Normalisierung/Aggregation der Lagerbestaende (keine GIANTS-Abhaengigkeit)
+    ├── PriceCollector.lua       Bester Preis + Periode aus roher Preishistorie (keine GIANTS-Abhaengigkeit)
     ├── FarmCollector.lua        Normalisierung + Payload-Aufbau fuer farm.json (keine GIANTS-Abhaengigkeit)
     ├── WorldCollector.lua       Normalisierung + Payload-Aufbau fuer world.json (keine GIANTS-Abhaengigkeit)
     └── TelemetryCollector.lua   Normalisierung + Payload-Aufbau fuer telemetry.json (keine GIANTS-Abhaengigkeit)
@@ -340,10 +395,10 @@ cd Bridge
 lua tests/run_tests.lua
 ```
 
-Erwartete Ausgabe: alle Tests `[ OK ]`, am Ende `78 bestanden, 0
+Erwartete Ausgabe: alle Tests `[ OK ]`, am Ende `87 bestanden, 0
 fehlgeschlagen` (16 JsonEncoder, 9 PollTimer, 16 FieldCollector,
-6 VehicleCollector, 7 StorageCollector, 6 FarmCollector,
-6 WorldCollector, 12 TelemetryCollector). `FarmPulseBridge.lua` selbst hat
+6 VehicleCollector, 7 StorageCollector, 8 PriceCollector, 6 FarmCollector,
+7 WorldCollector, 12 TelemetryCollector). `FarmPulseBridge.lua` selbst hat
 bewusst **keine** automatisierten Tests - es enthaelt ausschliesslich
 GIANTS-Engine-Aufrufe, die sich ausserhalb des laufenden Spiels nicht
 sinnvoll pruefen lassen (siehe Abschnitt "Test-Feedback-Loop" oben).

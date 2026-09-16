@@ -78,7 +78,9 @@ public class WorldIngestService {
                 new FieldSnapshot(field.fieldId(), field.ownerFarmId(), field.sizeHa(), field.price(),
                         field.fruitType(), field.growthState(), field.estimatedYieldLiters())));
         data.storages().forEach(storage -> snapshot.addStorage(
-                new StorageSnapshot(storage.fillType(), storage.amount(), storage.capacity())));
+                new StorageSnapshot(storage.fillType(), storage.amount(), storage.capacity(),
+                        storage.currentPricePer1000L(), storage.bestPricePer1000L(), storage.bestPricePeriod(),
+                        storage.bestPricePeriodLabel())));
 
         log.debug("Speichere WorldSnapshot: farmId={}, fleetValue={}, felder={}, lagerbestaende={}",
                 farm.get().getId(), data.fleetValue(), data.fields().size(), data.storages().size());

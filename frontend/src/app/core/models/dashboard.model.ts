@@ -31,6 +31,10 @@ export interface StorageItem {
   amount: number;
   capacity: number;
   fillPercentage: number;
+  currentPricePer1000L: number | null;
+  bestPricePer1000L: number | null;
+  bestPricePeriod: number | null;
+  bestPricePeriodLabel: string | null;
 }
 
 export type WeatherType =

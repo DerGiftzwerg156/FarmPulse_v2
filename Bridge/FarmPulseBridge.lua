@@ -13,6 +13,8 @@
           Feld-/Farmland-Informationen fuer ALLE Farmlands der Karte (inkl.
           optionaler Anbaudaten: Fruchtart, Wachstumsfortschritt,
           Ertragsschaetzung), aggregierter Fuhrpark-Wert, Lager-/Silobestaende
+          (inkl. aktuellem Marktpreis sowie bestem Preis + Periode der
+          letzten 12 FS25-Perioden je Fill-Typ)
         - farm.json (einmalig bei Aktivierung, aendert sich praktisch nie):
           Hofname, Spielername
 
@@ -23,7 +25,7 @@
     gehalten; die eigentliche Verarbeitungs-/Serialisierungslogik steckt in den
     testbaren, GIANTS-unabhaengigen Modulen unter scripts/ (JsonEncoder,
     PollTimer, FieldCollector, VehicleCollector, StorageCollector,
-    FarmCollector, WorldCollector, TelemetryCollector).
+    PriceCollector, FarmCollector, WorldCollector, TelemetryCollector).
 
     Bewusst NICHT exportiert (siehe README.md fuer die Begruendung je Kategorie):
     Fahrzeugzustand (Tank/Verschleiss - beobachtet der Spieler selbst im Spiel),
@@ -73,6 +75,7 @@ source(modDirectory .. "scripts/PollTimer.lua")
 source(modDirectory .. "scripts/FieldCollector.lua")
 source(modDirectory .. "scripts/VehicleCollector.lua")
 source(modDirectory .. "scripts/StorageCollector.lua")
+source(modDirectory .. "scripts/PriceCollector.lua")
 source(modDirectory .. "scripts/FarmCollector.lua")
 source(modDirectory .. "scripts/WorldCollector.lua")
 source(modDirectory .. "scripts/TelemetryCollector.lua")
@@ -546,6 +549,83 @@ function FarmPulseBridge.readStorages(farmId)
     return raw
 end
 
+--- Liest den rohen aktuellen Marktpreis sowie die rohe 12-Perioden-
+-- Preishistorie eines Fill-Typs (fuer "currentPricePer1000L"/"bestPricePer1000L"
+-- eines Lagerbestands, siehe PriceCollector).
+--
+-- BESTAETIGT (siehe README.md, Abschnitt "Marktpreise"): gegen ein
+-- dekompiliertes FS25-Basisspiel-Quellskript (EconomyManager.lua,
+-- FillTypeDesc.lua) sowie gegen mehrere veroeffentlichte FS25-Mods geprueft,
+-- die exakt dieselbe Signatur in Produktionscode aufrufen (u.a.
+-- FS25_ForestryHelper, VDTelemetry). g_currentMission.economyManager:
+-- getPricePerLiter(fillTypeIndex) liefert den aktuellen Preis in Euro je
+-- Liter (globaler Marktpreis, nicht je Verkaufsstelle).
+-- fillType.economy.history ist eine 12-eintraege-Tabelle (Index 1..12, eine
+-- FS25-"Periode" je Eintrag, NICHT zwingend Kalendermonate - siehe
+-- formatPricePeriod()) mit historischen Preisen in Euro je Liter, aus der
+-- PriceCollector.findBestPrice() den hoechsten Wert samt Periode ermittelt.
+-- @param fillTypeName Fill-Typ-Name wie von readStorages() geliefert (z.B. "WHEAT")
+-- @return currentPricePerLiter (number oder nil), history (Tabelle mit bis zu
+--         12 Eintraegen, Index 1..12, oder nil - jeweils nil, falls der
+--         Zugriff fehlschlaegt)
+function FarmPulseBridge.readFillTypePrice(fillTypeName)
+    local currentPricePerLiter, history
+
+    local ok = pcall(function()
+        local fillType = g_fillTypeManager:getFillTypeByName(fillTypeName)
+        if fillType == nil then
+            return
+        end
+
+        currentPricePerLiter = g_currentMission.economyManager:getPricePerLiter(fillType.index)
+
+        if type(fillType.economy) == "table" and type(fillType.economy.history) == "table" then
+            history = {}
+            for period = 1, 12 do
+                history[period] = fillType.economy.history[period]
+            end
+        end
+    end)
+
+    if not ok then
+        FarmPulseBridge.log("WARNUNG: Konnte Marktpreis fuer '" .. tostring(fillTypeName)
+            .. "' nicht ueber g_currentMission.economyManager lesen.")
+        return nil, nil
+    end
+
+    return currentPricePerLiter, history
+end
+
+--- Loest eine FS25-Preis-"Periode" (1..12, siehe readFillTypePrice()) zu einem
+-- menschenlesbaren, spiel-lokalisierten Monatsnamen auf.
+--
+-- BESTAETIGT (siehe README.md, Abschnitt "Marktpreise"): g_i18n:formatPeriod()
+-- ist dieselbe Funktion, die die Preis-Statistik-Ansicht des Basisspiels fuer
+-- die Monatsbeschriftung nutzt. Periode 1 ist auf der Nordhalbkugel-Standard-
+-- karte NICHT Januar, sondern Maerz (Verschiebung um den Kartenbreitengrad je
+-- nach Hemisphaere) - die Zuordnung Periode->Monat wird deshalb bewusst NICHT
+-- selbst nachgebaut, sondern ueber die Engine-Funktion aufgeloest.
+-- @param period 1..12 oder nil
+-- @return lokalisierter Monatsname (string) oder nil, falls period nil ist
+--         oder der Zugriff fehlschlaegt
+function FarmPulseBridge.formatPricePeriod(period)
+    if period == nil then
+        return nil
+    end
+
+    local label
+    local ok = pcall(function()
+        label = g_i18n:formatPeriod(period)
+    end)
+
+    if not ok or type(label) ~= "string" then
+        FarmPulseBridge.log("WARNUNG: Konnte Periode " .. tostring(period) .. " nicht ueber g_i18n:formatPeriod lesen.")
+        return nil
+    end
+
+    return label
+end
+
 --- Baut die aktuelle Telemetrie-Nutzlast und schreibt sie als telemetry.json in
 -- den Austauschordner. Schnelle "Puls"-Werte, siehe FarmPulseBridge.POLL_INTERVAL_MS.
 function FarmPulseBridge.exportTelemetry()
@@ -588,10 +668,18 @@ function FarmPulseBridge.exportWorld()
     local rawVehiclePrices = FarmPulseBridge.readVehiclePrices(farmId)
     local rawStorages = FarmPulseBridge.readStorages(farmId)
 
+    local storages = StorageCollector.buildStorages(rawStorages)
+    for i, storage in ipairs(storages) do
+        local rawCurrentPrice, rawHistory = FarmPulseBridge.readFillTypePrice(storage.fillType)
+        local _, bestPricePeriod = PriceCollector.findBestPrice(rawHistory)
+        local bestPricePeriodLabel = FarmPulseBridge.formatPricePeriod(bestPricePeriod)
+        storages[i] = PriceCollector.withPrice(storage, rawCurrentPrice, rawHistory, bestPricePeriodLabel)
+    end
+
     local payload = WorldCollector.buildPayload({
         fields = FieldCollector.buildFields(rawFarmlands, rawFieldCrops),
         fleetValue = VehicleCollector.buildFleetValue(rawVehiclePrices),
-        storages = StorageCollector.buildStorages(rawStorages),
+        storages = storages,
     })
 
     FarmPulseBridge.writeJsonFile(FarmPulseBridge.WORLD_FILENAME, WorldCollector.toJson(payload))

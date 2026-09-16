@@ -67,6 +67,19 @@ wheat_capacity=20000
 barley_amount=1200
 barley_capacity=20000
 
+# --- Marktpreise je Lagerbestand (siehe PriceCollector.lua) ---
+# HINWEIS: die echte Bridge zaehlt FS25-"Perioden" (1-12), die je nach
+# Kartenbreitengrad NICHT mit Kalendermonaten uebereinstimmen (siehe
+# Bridge/README.md). Dieser Mock vereinfacht das bewusst und nutzt den
+# simulierten Kalendermonat direkt als "beste Periode"-Label.
+MONTH_NAMES=("Januar" "Februar" "März" "April" "Mai" "Juni" "Juli" "August" "September" "Oktober" "November" "Dezember")
+wheat_price_per_1000l=218.40
+wheat_best_price_per_1000l=218.40
+wheat_best_price_period=${month}
+barley_price_per_1000l=175.20
+barley_best_price_per_1000l=175.20
+barley_best_price_period=${month}
+
 # --- Anbaudaten je eigenem Feld (siehe FieldCollector.computeCropInfo()) ---
 # growth_pct laeuft 0..100 (Prozent von growthState) und startet nach dem
 # "erntereif"-Punkt wieder bei 0 (simulierte Wiederaussaat).
@@ -104,7 +117,7 @@ write_world() {
     field2_yield=$(awk "BEGIN { printf \"%.1f\", ${field2_liter_per_sqm} * ${field2_area_ha} * 10000 * ${field2_growth_pct} / 100 }")
 
     cat > "${tmp_file}" <<JSON
-{"fleetValue":${fleet_value},"fields":[{"fieldId":1,"ownerFarmId":${farm_id},"sizeHa":${field1_area_ha},"price":32000,"fruitType":"${field1_fruit}","growthState":${field1_growth},"estimatedYieldLiters":${field1_yield}},{"fieldId":2,"ownerFarmId":${farm_id},"sizeHa":${field2_area_ha},"price":45000,"fruitType":"${field2_fruit}","growthState":${field2_growth},"estimatedYieldLiters":${field2_yield}},{"fieldId":3,"ownerFarmId":0,"sizeHa":3.2,"price":28000,"fruitType":null,"growthState":null,"estimatedYieldLiters":null}],"storages":[{"fillType":"BARLEY","amount":${barley_amount},"capacity":${barley_capacity}},{"fillType":"WHEAT","amount":${wheat_amount},"capacity":${wheat_capacity}}]}
+{"fleetValue":${fleet_value},"fields":[{"fieldId":1,"ownerFarmId":${farm_id},"sizeHa":${field1_area_ha},"price":32000,"fruitType":"${field1_fruit}","growthState":${field1_growth},"estimatedYieldLiters":${field1_yield}},{"fieldId":2,"ownerFarmId":${farm_id},"sizeHa":${field2_area_ha},"price":45000,"fruitType":"${field2_fruit}","growthState":${field2_growth},"estimatedYieldLiters":${field2_yield}},{"fieldId":3,"ownerFarmId":0,"sizeHa":3.2,"price":28000,"fruitType":null,"growthState":null,"estimatedYieldLiters":null}],"storages":[{"fillType":"BARLEY","amount":${barley_amount},"capacity":${barley_capacity},"currentPricePer1000L":${barley_price_per_1000l},"bestPricePer1000L":${barley_best_price_per_1000l},"bestPricePeriod":${barley_best_price_period},"bestPricePeriodLabel":"${MONTH_NAMES[$((barley_best_price_period - 1))]}"},{"fillType":"WHEAT","amount":${wheat_amount},"capacity":${wheat_capacity},"currentPricePer1000L":${wheat_price_per_1000l},"bestPricePer1000L":${wheat_best_price_per_1000l},"bestPricePeriod":${wheat_best_price_period},"bestPricePeriodLabel":"${MONTH_NAMES[$((wheat_best_price_period - 1))]}"}]}
 JSON
     mv "${tmp_file}" "${WORLD_FILE}"
 }
@@ -160,6 +173,20 @@ while true; do
     barley_amount=$(((barley_amount + (RANDOM % 301) - 100) % (barley_capacity + 1)))
     if [ "${barley_amount}" -lt 0 ]; then
         barley_amount=0
+    fi
+
+    # Marktpreise leicht schwanken lassen und den bisher besten Preis samt
+    # Periode (hier: simulierter Kalendermonat) fortschreiben (siehe
+    # PriceCollector.findBestPrice() fuer dieselbe Logik auf Bridge-Seite).
+    wheat_price_per_1000l=$(awk "BEGIN { p = ${wheat_price_per_1000l} + (${RANDOM} % 21 - 10) / 10; if (p < 0) p = 0; printf \"%.2f\", p }")
+    if awk "BEGIN { exit !(${wheat_price_per_1000l} > ${wheat_best_price_per_1000l}) }"; then
+        wheat_best_price_per_1000l="${wheat_price_per_1000l}"
+        wheat_best_price_period=${month}
+    fi
+    barley_price_per_1000l=$(awk "BEGIN { p = ${barley_price_per_1000l} + (${RANDOM} % 21 - 10) / 10; if (p < 0) p = 0; printf \"%.2f\", p }")
+    if awk "BEGIN { exit !(${barley_price_per_1000l} > ${barley_best_price_per_1000l}) }"; then
+        barley_best_price_per_1000l="${barley_price_per_1000l}"
+        barley_best_price_period=${month}
     fi
 
     # Wachstum der beiden simulierten Felder voranschreiten lassen; nach

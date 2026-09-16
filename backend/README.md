@@ -105,8 +105,9 @@ Mock-Datenpunkte ohne aktuelle Bridge-Quelle):
 - `GET /api/dashboard` - aggregierter Zustand der aktiven Farm: Stammdaten, aktuelle
   Spielzeit, Wetter (Typ + Temperatur), Kontostand, Fuhrparkwert, die der Farm
   gehoerenden Felder (`FieldSnapshot.ownerFarmId == Farm.id`), alle Lagerbestaende mit
-  Fuellgrad (angezeigt auf der eigenen `/storage`-Seite im Frontend, nicht mehr auf dem
-  Dashboard selbst) sowie einfache, aus diesen Werten abgeleitete Warnungen (aktuell nur
+  Fuellgrad sowie aktuellem/bestem Marktpreis je Fill-Typ (angezeigt auf der eigenen
+  `/storage`-Seite im Frontend, nicht mehr auf dem Dashboard selbst) sowie einfache,
+  aus diesen Werten abgeleitete Warnungen (aktuell nur
   negativer Kontostand - die fruehere "Lager fast voll"-Warnung wurde entfernt, der
   Fuellgrad ist stattdessen direkt auf der Lagerbestaende-Seite sichtbar). Liefert
   `404 Not Found`, solange noch keine Farm/Telemetrie vorliegt (siehe `savegame/` oben).
@@ -176,7 +177,7 @@ fuer den Erweiterungsprozess).
 | `telemetry_snapshot` | Eine Zeile je tatsaechlich geaendertem `telemetry.json`-Poll (Kontostand, Spielzeit/-kalender, Wetter-Typ + Temperatur). |
 | `world_snapshot` | Eine Zeile je tatsaechlich geaendertem `world.json`-Poll (Fuhrpark-Wert). |
 | `field_snapshot` | Volle Feldliste je `world_snapshot` (kein Delta, siehe Bridge-Format). Zusaetzlich zu Groesse/Preis optional Fruchtart, Wachstumsstand (0..1) und geschaetzte Erntemenge in Litern, sofern das Feld aktuell eine Frucht traegt. |
-| `storage_snapshot` | Volle Lagerbestandsliste je `world_snapshot`. |
+| `storage_snapshot` | Volle Lagerbestandsliste je `world_snapshot`. Zusaetzlich zu Fuellgrad optional aktueller Marktpreis sowie bester Preis + Periode je Fill-Typ (nullable, siehe Bridge/README.md, Abschnitt "Marktpreise"). |
 | `mailbox_message` | Eine Zeile je generierter Postfach-Nachricht (siehe "Postfach / Farm-Mailbox" oben). |
 | `savegame_backstory` | Die einmalig eingegebene "Vorgeschichte" eines Savegames (siehe "Savegame-Start" oben). Hoechstens eine Zeile; `farm_id` nullable, solange die Farm noch nicht bekannt ist. |
 

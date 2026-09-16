@@ -8,7 +8,9 @@
         {
           "fleetValue": 125000,
           "fields": [ { "fieldId": 1, "ownerFarmId": 0, "sizeHa": 4.53, "price": 32000 } ],
-          "storages": [ { "fillType": "WHEAT", "amount": 5000, "capacity": 20000 } ]
+          "storages": [ { "fillType": "WHEAT", "amount": 5000, "capacity": 20000,
+            "currentPricePer1000L": 218.4, "bestPricePer1000L": 254.1,
+            "bestPricePeriod": 3, "bestPricePeriodLabel": "März" } ]
         }
 
     world.json fasst bewusst alles zusammen, was "Besitz/Vermoegen" jenseits
@@ -73,6 +75,10 @@ function WorldCollector.toJson(payload)
             { key = "fillType", value = storage.fillType },
             { key = "amount", value = storage.amount },
             { key = "capacity", value = storage.capacity },
+            { key = "currentPricePer1000L", value = storage.currentPricePer1000L },
+            { key = "bestPricePer1000L", value = storage.bestPricePer1000L },
+            { key = "bestPricePeriod", value = storage.bestPricePeriod },
+            { key = "bestPricePeriodLabel", value = storage.bestPricePeriodLabel },
         })
     end
 

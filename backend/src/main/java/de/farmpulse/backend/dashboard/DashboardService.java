@@ -110,7 +110,9 @@ public class DashboardService {
         double fillPercentage = storage.getCapacity() > 0
                 ? (storage.getAmount() * 100.0) / storage.getCapacity()
                 : 0.0;
-        return new StorageItem(storage.getFillType(), storage.getAmount(), storage.getCapacity(), fillPercentage);
+        return new StorageItem(storage.getFillType(), storage.getAmount(), storage.getCapacity(), fillPercentage,
+                storage.getCurrentPricePer1000L(), storage.getBestPricePer1000L(), storage.getBestPricePeriod(),
+                storage.getBestPricePeriodLabel());
     }
 
     private List<Alert> deriveAlerts(long money) {

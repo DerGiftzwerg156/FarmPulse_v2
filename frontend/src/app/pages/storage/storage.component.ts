@@ -1,7 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
+import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { LucideWarehouse } from '@lucide/angular';
+import { LucideTrendingUp, LucideWarehouse } from '@lucide/angular';
 import { DashboardService } from '../../core/services/dashboard.service';
 
 const NEARLY_FULL_THRESHOLD_PERCENT = 90;
@@ -9,7 +9,7 @@ const NEARLY_FULL_THRESHOLD_PERCENT = 90;
 @Component({
   selector: 'app-storage',
   standalone: true,
-  imports: [DecimalPipe, LucideWarehouse],
+  imports: [CurrencyPipe, DecimalPipe, LucideTrendingUp, LucideWarehouse],
   templateUrl: './storage.component.html',
 })
 export class StorageComponent {
