@@ -1,0 +1,50 @@
+@if (message(); as msg) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-fp-bg/80 p-4" (click)="close()">
+    <div
+      class="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-md border border-fp-border bg-fp-panel p-5"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex items-center gap-2.5">
+          <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm border border-fp-accent/40 bg-fp-accent/10 text-fp-accent">
+            @switch (categoryIcon(msg.category)) {
+              @case ('banknote') { <svg lucideBanknote class="h-5 w-5"></svg> }
+              @case ('wrench') { <svg lucideWrench class="h-5 w-5"></svg> }
+              @case ('users') { <svg lucideUsers class="h-5 w-5"></svg> }
+              @case ('cloud-rain') { <svg lucideCloudRain class="h-5 w-5"></svg> }
+              @case ('landmark') { <svg lucideLandmark class="h-5 w-5"></svg> }
+              @case ('megaphone') { <svg lucideMegaphone class="h-5 w-5"></svg> }
+              @default { <svg lucideMail class="h-5 w-5"></svg> }
+            }
+          </span>
+          <div>
+            <div class="font-display text-sm font-semibold text-fp-text">{{ msg.sender }}</div>
+            <div class="font-mono text-[11px] text-fp-muted">{{ gameTimeLabel(msg) }}</div>
+          </div>
+        </div>
+        <button
+          type="button"
+          class="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-fp-border text-fp-muted transition hover:border-fp-accent/50 hover:text-fp-text"
+          (click)="close()"
+        >
+          <svg lucideX class="h-4 w-4"></svg>
+        </button>
+      </div>
+
+      <div class="mt-4 flex items-center gap-2">
+        <span
+          class="inline-flex items-center gap-1.5 rounded-sm border border-fp-border bg-fp-bg px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
+          [class.text-fp-warn]="msg.priority === 'HIGH'"
+          [class.text-fp-text]="msg.priority === 'MEDIUM'"
+          [class.text-fp-muted]="msg.priority === 'LOW'"
+        >
+          {{ priorityLabel(msg) }}
+        </span>
+        <span class="font-display text-[10px] uppercase tracking-[0.12em] text-fp-muted">{{ msg.category }}</span>
+      </div>
+
+      <h2 class="mt-3 font-display text-lg font-semibold text-fp-text">{{ msg.subject }}</h2>
+      <p class="mt-2 whitespace-pre-line font-body text-sm leading-relaxed text-fp-text">{{ msg.body }}</p>
+    </div>
+  </div>
+}

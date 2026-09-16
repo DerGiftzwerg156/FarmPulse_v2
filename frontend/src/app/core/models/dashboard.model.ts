@@ -33,6 +33,22 @@ export interface StorageItem {
   fillPercentage: number;
 }
 
+export type WeatherType =
+  | 'SUN'
+  | 'PARTIALLY_CLOUDY'
+  | 'CLOUDY'
+  | 'RAIN'
+  | 'SNOW'
+  | 'HAIL'
+  | 'THUNDER'
+  | 'TWISTER'
+  | 'UNKNOWN';
+
+export interface WeatherInfo {
+  type: WeatherType;
+  temperature: number;
+}
+
 export type AlertSeverity = 'WARNING';
 
 export interface DashboardAlert {
@@ -43,6 +59,7 @@ export interface DashboardAlert {
 export interface DashboardResponse {
   farm: FarmInfo;
   gameTime: GameTime;
+  weather: WeatherInfo;
   money: number;
   fleetValue: number;
   fields: FieldsSummary;

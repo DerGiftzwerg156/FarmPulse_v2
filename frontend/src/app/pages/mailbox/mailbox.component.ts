@@ -14,6 +14,7 @@ import {
 } from '@lucide/angular';
 import { MailboxService } from '../../core/services/mailbox.service';
 import { MailboxMessage } from '../../core/models/mailbox.model';
+import { MailboxMessageModalComponent } from '../../shared/components/mailbox-message-modal/mailbox-message-modal.component';
 
 interface CategoryFilter {
   label: string;
@@ -37,6 +38,7 @@ const CATEGORIES: CategoryFilter[] = [
   standalone: true,
   imports: [
     FormsModule,
+    MailboxMessageModalComponent,
     LucideBanknote,
     LucideCheck,
     LucideCloudRain,
@@ -60,6 +62,7 @@ export class MailboxComponent {
   protected readonly activeCategory = signal<string | null>(null);
 
   protected readonly unreadCount = computed(() => this.messages().filter((m) => !m.read).length);
+  protected readonly selectedMessage = signal<MailboxMessage | null>(null);
 
   protected readonly filteredMessages = computed(() => {
     const search = this.search().trim().toLowerCase();
@@ -120,10 +123,14 @@ export class MailboxComponent {
     this.onlyUnread.update((value) => !value);
   }
 
-  markRead(message: MailboxMessage): void {
-    if (message.read) {
-      return;
+  openMessage(message: MailboxMessage): void {
+    this.selectedMessage.set(message);
+    if (!message.read) {
+      this.mailboxService.markRead(message.id).subscribe(() => this.mailboxService.refreshNow());
     }
-    this.mailboxService.markRead(message.id).subscribe(() => this.mailboxService.refreshNow());
+  }
+
+  closeMessage(): void {
+    this.selectedMessage.set(null);
   }
 }

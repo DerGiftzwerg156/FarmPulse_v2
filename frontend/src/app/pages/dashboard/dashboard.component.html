@@ -87,7 +87,7 @@
               [class.border-fp-accent]="!message.read"
               [class.border-opacity-30]="!message.read"
               [class.border-fp-border]="message.read"
-              (click)="markRead(message.id)"
+              (click)="openMessage(message)"
             >
               <div class="flex items-center justify-between">
                 <span class="font-display text-[11px] font-semibold" [class.text-fp-text]="!message.read" [class.text-fp-muted]="message.read">
@@ -140,3 +140,5 @@
     }
   </section>
 }
+
+<app-mailbox-message-modal [message]="selectedMessage()" (closed)="closeMessage()" />

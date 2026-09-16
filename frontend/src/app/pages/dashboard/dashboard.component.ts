@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
@@ -12,8 +12,10 @@ import {
 } from '@lucide/angular';
 import { DashboardService } from '../../core/services/dashboard.service';
 import { MailboxService } from '../../core/services/mailbox.service';
+import { MailboxMessage } from '../../core/models/mailbox.model';
 import { HeroStatComponent } from '../../shared/components/hero-stat/hero-stat.component';
 import { SparklineComponent } from '../../shared/components/sparkline/sparkline.component';
+import { MailboxMessageModalComponent } from '../../shared/components/mailbox-message-modal/mailbox-message-modal.component';
 
 const MAILBOX_PREVIEW_LIMIT = 5;
 
@@ -26,6 +28,7 @@ const MAILBOX_PREVIEW_LIMIT = 5;
     RouterLink,
     HeroStatComponent,
     SparklineComponent,
+    MailboxMessageModalComponent,
     LucideArrowRight,
     LucideMail,
     LucideSprout,
@@ -47,7 +50,16 @@ export class DashboardComponent {
   protected readonly previewMessages = computed(() => this.messages().slice(0, MAILBOX_PREVIEW_LIMIT));
   protected readonly unreadMailCount = computed(() => this.messages().filter((m) => !m.read).length);
 
-  markRead(id: number): void {
-    this.mailboxService.markRead(id).subscribe(() => this.mailboxService.refreshNow());
+  protected readonly selectedMessage = signal<MailboxMessage | null>(null);
+
+  openMessage(message: MailboxMessage): void {
+    this.selectedMessage.set(message);
+    if (!message.read) {
+      this.mailboxService.markRead(message.id).subscribe(() => this.mailboxService.refreshNow());
+    }
+  }
+
+  closeMessage(): void {
+    this.selectedMessage.set(null);
   }
 }
