@@ -19,6 +19,7 @@ import {
   LucideTornado,
   LucideTractor,
   LucideWallet,
+  LucideWarehouse,
 } from '@lucide/angular';
 import { DashboardService } from '../../core/services/dashboard.service';
 import { MailboxService } from '../../core/services/mailbox.service';
@@ -49,6 +50,7 @@ import { weatherIconName, weatherLabel } from '../../core/utils/weather.util';
     LucideTornado,
     LucideTractor,
     LucideWallet,
+    LucideWarehouse,
   ],
   templateUrl: './shell.component.html',
 })

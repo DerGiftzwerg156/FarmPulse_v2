@@ -182,34 +182,6 @@
       </a>
     </section>
   </div>
-
-  <section class="mt-4 rounded-md border border-fp-border bg-fp-panel p-4">
-    <h3 class="mb-3 font-display text-[11px] font-semibold uppercase tracking-[0.18em] text-fp-muted">
-      Lagerbestände
-    </h3>
-    @if (dashboard()!.storages.length === 0) {
-      <p class="font-body text-sm text-fp-muted">Noch keine Lagerdaten bekannt.</p>
-    } @else {
-      <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        @for (storage of dashboard()!.storages; track storage.fillType) {
-          <div class="rounded-md border border-fp-border bg-fp-bg p-2.5">
-            <div class="flex items-center justify-between">
-              <span class="font-display text-[11px] font-semibold text-fp-text">{{ storage.fillType }}</span>
-              <span class="font-mono text-[10px] text-fp-muted">{{ storage.amount | number:'1.0-0':'de' }}/{{ storage.capacity | number:'1.0-0':'de' }} L</span>
-            </div>
-            <div class="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-fp-panel ring-1 ring-inset ring-fp-border">
-              <div
-                class="h-full rounded-full transition-all"
-                [class.bg-fp-accent]="storage.fillPercentage < 90"
-                [class.bg-fp-warn]="storage.fillPercentage >= 90"
-                [style.width.%]="storage.fillPercentage"
-              ></div>
-            </div>
-          </div>
-        }
-      </div>
-    }
-  </section>
 }
 
 <app-mailbox-message-modal [message]="selectedMessage()" (closed)="closeMessage()" />

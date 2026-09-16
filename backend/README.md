@@ -105,9 +105,11 @@ Mock-Datenpunkte ohne aktuelle Bridge-Quelle):
 - `GET /api/dashboard` - aggregierter Zustand der aktiven Farm: Stammdaten, aktuelle
   Spielzeit, Wetter (Typ + Temperatur), Kontostand, Fuhrparkwert, die der Farm
   gehoerenden Felder (`FieldSnapshot.ownerFarmId == Farm.id`), alle Lagerbestaende mit
-  Fuellgrad sowie einfache, aus diesen Werten abgeleitete Warnungen (negativer
-  Kontostand, Lager ueber 90% voll). Liefert `404 Not Found`, solange noch keine
-  Farm/Telemetrie vorliegt (siehe `savegame/` oben).
+  Fuellgrad (angezeigt auf der eigenen `/storage`-Seite im Frontend, nicht mehr auf dem
+  Dashboard selbst) sowie einfache, aus diesen Werten abgeleitete Warnungen (aktuell nur
+  negativer Kontostand - die fruehere "Lager fast voll"-Warnung wurde entfernt, der
+  Fuellgrad ist stattdessen direkt auf der Lagerbestaende-Seite sichtbar). Liefert
+  `404 Not Found`, solange noch keine Farm/Telemetrie vorliegt (siehe `savegame/` oben).
 - `GET /api/dashboard/history?limit=` - die letzten `limit` (Default 20, max. 200)
   Kontostand-Werte in chronologischer Reihenfolge, fuer die Sparkline im Dashboard.
 

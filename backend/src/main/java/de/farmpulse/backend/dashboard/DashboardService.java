@@ -34,7 +34,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class DashboardService {
 
     private static final int MAX_HISTORY_LIMIT = 200;
-    private static final double STORAGE_ALERT_THRESHOLD_PERCENT = 90.0;
 
     private final FarmRepository farmRepository;
     private final TelemetrySnapshotRepository telemetrySnapshotRepository;
@@ -62,7 +61,7 @@ public class DashboardService {
         long fleetValue = world.map(WorldSnapshot::getFleetValue).orElse(0L);
         FieldsSummary fields = toFieldsSummary(world.orElse(null), farm.getId());
         List<StorageItem> storages = world.map(this::toStorageItems).orElseGet(List::of);
-        List<Alert> alerts = deriveAlerts(telemetry.getMoney(), storages);
+        List<Alert> alerts = deriveAlerts(telemetry.getMoney());
 
         return new DashboardResponse(farmInfo, gameTime, weather, telemetry.getMoney(), fleetValue, fields, storages,
                 alerts);
@@ -114,17 +113,10 @@ public class DashboardService {
         return new StorageItem(storage.getFillType(), storage.getAmount(), storage.getCapacity(), fillPercentage);
     }
 
-    private List<Alert> deriveAlerts(long money, List<StorageItem> storages) {
+    private List<Alert> deriveAlerts(long money) {
         List<Alert> alerts = new java.util.ArrayList<>();
         if (money < 0) {
             alerts.add(new Alert(Alert.Severity.WARNING, "Der Kontostand ist negativ."));
-        }
-        for (StorageItem storage : storages) {
-            if (storage.fillPercentage() >= STORAGE_ALERT_THRESHOLD_PERCENT) {
-                alerts.add(new Alert(Alert.Severity.WARNING,
-                        "Lager \"" + storage.fillType() + "\" ist zu " + Math.round(storage.fillPercentage())
-                                + "% voll."));
-            }
         }
         return alerts;
     }

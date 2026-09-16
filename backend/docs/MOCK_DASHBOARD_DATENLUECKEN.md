@@ -143,11 +143,14 @@ auf die sich generierte Nachrichten inhaltlich beziehen könnten.
 ## Was das Dashboard zeigt
 
 Die Hero-Kacheln des Dashboards (`dashboard.component.html`) bilden
-ausschließlich real vorhandene Werte ab: Kontostand (mit Sparkline aus
-`GET /api/dashboard/history`), Fuhrparkwert, Anzahl/Gesamtfläche eigener
-Felder sowie die Anzahl ungelesener Postfach-Nachrichten (jetzt eine echte
-Zahl aus `GET /api/mailbox`, kein Platzhalter mehr). Zusätzlich leitet
-`DashboardService.deriveAlerts(...)` einfache, auf echten Daten basierende
-Hinweise ab (negativer Kontostand, Lager ≥ 90% voll) - im Gegensatz zu den
-KI-generierten Mailbox-Einträgen im Mock sind das simple
-Schwellwert-Regeln, keine erfundenen Inhalte.
+ausschließlich real vorhandene Werte ab: Spielzeit (Tag/Jahr/Monat/Uhrzeit),
+Wetter (Temperatur + Typ), Kontostand (mit Sparkline aus
+`GET /api/dashboard/history`) sowie die Anzahl ungelesener
+Postfach-Nachrichten aus `GET /api/mailbox`. Darunter zeigen zwei Panels
+eine Felder- (`GET /api/fields`) und eine Postfach-Vorschau. Zusätzlich
+leitet `DashboardService.deriveAlerts(...)` einen einfachen, auf echten
+Daten basierenden Hinweis ab (negativer Kontostand) - im Gegensatz zu den
+KI-generierten Mailbox-Einträgen im Mock ist das eine simple
+Schwellwert-Regel, kein erfundener Inhalt. Lagerbestände werden bewusst
+nicht mehr auf dem Dashboard angezeigt (auch die frühere "Lager fast
+voll"-Warnung wurde entfernt) - dafür gibt es die eigene `/storage`-Seite.

@@ -108,7 +108,24 @@ class DashboardServiceTest {
         assertThat(response.fields().totalValue()).isEqualTo(20_000L);
         assertThat(response.storages()).hasSize(2);
         assertThat(response.storages().get(0).fillPercentage()).isEqualTo(95.0);
-        assertThat(response.alerts()).anyMatch(alert -> alert.message().contains("WHEAT"));
+    }
+
+    @Test
+    void meldetVollesLagerNichtMehrAlsAlert() {
+        Farm farm = farmMitId(1L);
+        when(farmRepository.findTopByOrderByUpdatedAtDesc()).thenReturn(Optional.of(farm));
+        TelemetrySnapshot telemetry = new TelemetrySnapshot(farm, 2025, 6, 12, 8, 30, 30, 100_000L, "SUN", 11.4,
+                Instant.now(), Instant.now());
+        when(telemetrySnapshotRepository.findTopByFarmIdOrderByRecordedAtDesc(1L)).thenReturn(Optional.of(telemetry));
+
+        WorldSnapshot world = new WorldSnapshot(farm, 250_000L, Instant.now(), Instant.now());
+        world.addStorage(new StorageSnapshot("WHEAT", 9_500L, 10_000L));
+        when(worldSnapshotRepository.findTopByFarmIdOrderByRecordedAtDesc(1L)).thenReturn(Optional.of(world));
+
+        DashboardResponse response = service.getDashboard();
+
+        assertThat(response.storages().get(0).fillPercentage()).isEqualTo(95.0);
+        assertThat(response.alerts()).isEmpty();
     }
 
     @Test
