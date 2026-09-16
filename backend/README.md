@@ -32,12 +32,18 @@ backend/
     │   ├── DashboardController.java         GET /api/dashboard, GET /api/dashboard/history
     │   ├── DashboardService.java            Aggregiert Farm/Telemetrie/Welt zum aktuellen Zustand
     │   └── dto/
+    ├── mailbox/                             Postfach/Farm-Mailbox (siehe unten)
+    │   ├── MailboxController.java           GET /api/mailbox, POST /api/mailbox/{id}/read
+    │   ├── MailboxService.java              Liest Nachrichten der aktiven Farm
+    │   ├── MailboxGenerationService.java    Erzeugt periodisch neue Nachrichten aus Mock-Vorlagen
+    │   └── dto/
     ├── domain/                              JPA-Entitaeten
     └── repository/                          Spring-Data-Repositories
 └── src/main/resources/
     ├── application.yml
     ├── application-docker.yml            Ueberschreibt DB-Host/Austauschordner fuer den Container-Betrieb
-    └── db/migration/                        Flyway-Migrationen (V1-V6)
+    ├── mailbox/mailbox-templates.json     Mock-Nachrichtenvorlagen fuer MailboxGenerationService
+    └── db/migration/                        Flyway-Migrationen (V1-V7)
 ```
 
 ### Ingest-Pipeline
@@ -96,6 +102,23 @@ Mock-Datenpunkte ohne aktuelle Bridge-Quelle):
   vorliegt (siehe `savegame/` oben).
 - `GET /api/dashboard/history?limit=` - die letzten `limit` (Default 20, max. 200)
   Kontostand-Werte in chronologischer Reihenfolge, fuer die Sparkline im Dashboard.
+
+### Postfach / Farm-Mailbox (`mailbox/`)
+
+`MailboxController` stellt die Nachrichten der aktiven Farm bereit:
+
+- `GET /api/mailbox` - alle Nachrichten der aktiven Farm, neueste zuerst.
+- `POST /api/mailbox/{id}/read` - markiert eine Nachricht als gelesen
+  (`404 Not Found`, falls die ID nicht existiert).
+
+Die Nachrichten selbst werden periodisch von `MailboxGenerationService`
+erzeugt - aktuell **ohne** echte KI-Anbindung: Es wird zufaellig eine
+statische Beispielvorlage aus `mailbox-templates.json`
+(`src/main/resources/mailbox/`) ausgewaehlt. Die Stelle, an der spaeter
+generierter statt vorlagenbasierter Inhalt eingesetzt werden soll, ist in
+`MailboxGenerationService.selectTemplate()` explizit mit
+`TODO(KI-Integration)` markiert. Es existiert bewusst (noch) keine eigene
+Frontend-Seite dafuer.
 
 ### Bekannte Einschraenkung: eine aktive Farm pro Instanz
 

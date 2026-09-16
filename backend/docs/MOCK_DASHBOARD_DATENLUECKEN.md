@@ -46,11 +46,18 @@ Prognoselogik - beides existiert weder in der Bridge noch im Backend.
 
 ## Postfach / Farm-Mailbox
 
-Der Mock zeigt KI-generierte Nachrichten (Marktberichte, Mitarbeiteranrufe,
-Ausrüstungswarnungen) mit Priorität und Kategorie. Es gibt aktuell weder
-eine Datenquelle in der Bridge noch ein Konzept für Inhalte/Trigger dieser
-Nachrichten im Backend. Das beträfe potenziell auch Marktpreise
-(z.B. Weizenpreis in €/t mit Trend), die ebenfalls nicht exportiert werden.
+**Teilweise umgesetzt.** Es gibt jetzt eine `MailboxMessage`-Entität
+(`de.farmpulse.backend.domain.MailboxMessage`, Tabelle `mailbox_message`)
+sowie `de.farmpulse.backend.mailbox.MailboxGenerationService`, der periodisch
+neue Nachrichten erzeugt und unter `GET /api/mailbox` abrufbar macht. Die
+Inhalte sind aber (noch) **keine KI-generierten** Nachrichten wie im Mock,
+sondern zufällig ausgewählte, statische Beispiele aus der mitgelieferten
+`mailbox-templates.json`. Die Stelle, an der spätere KI-generierte statt
+vorlagenbasierter Inhalte eingesetzt werden sollen, ist in
+`MailboxGenerationService.selectTemplate()` explizit mit `TODO(KI-Integration)`
+markiert. Es existiert bewusst noch keine eigene Frontend-Seite dafür (nicht
+angefordert) und auch keine Marktpreis-Datenquelle (z.B. Weizenpreis in €/t
+mit Trend) in der Bridge.
 
 ## Was das Dashboard stattdessen zeigt
 
