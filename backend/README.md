@@ -16,14 +16,15 @@ backend/
     ├── config/
     │   └── BridgeExchangeProperties.java   Konfiguration: Austauschordner + Poll-Intervalle
     ├── ingest/
-    │   ├── dto/                            Rohabbild der drei JSON-Dateien (1:1 zum Bridge-Format)
-    │   ├── ExchangeFileReader.java          Liest eine Austauschdatei, wenn sie sich (per mtime) geaendert hat
-    │   ├── TelemetryIngestService.java      telemetry.json -> Farm (Upsert) + TelemetrySnapshot
-    │   ├── WorldIngestService.java          world.json -> WorldSnapshot + Field-/StorageSnapshot
-    │   ├── FarmIngestService.java           farm.json -> Name/Spielername der Farm
     │   ├── IngestScheduler.java             @Scheduled-Jobs, ein Intervall je Datei
-    │   └── IngestController.java            POST /api/ingest/trigger - einmaliger manueller Durchlauf
-    ├── processing/                          Verarbeitungsschritt-Erweiterungspunkt (siehe unten)
+    │   ├── IngestController.java            POST /api/ingest/trigger - einmaliger manueller Durchlauf
+    │   ├── dto/                             Rohabbild der drei JSON-Dateien (1:1 zum Bridge-Format)
+    │   └── service/
+    │       ├── ExchangeFileReader.java      Liest eine Austauschdatei, wenn sie sich (per mtime) geaendert hat
+    │       ├── TelemetryIngestService.java  telemetry.json -> Farm (Upsert) + TelemetrySnapshot
+    │       ├── WorldIngestService.java      world.json -> WorldSnapshot + Field-/StorageSnapshot
+    │       └── FarmIngestService.java       farm.json -> Name/Spielername der Farm
+    ├── processing/                          Verarbeitungsschritt-Erweiterungspunkt (siehe unten, je Interface + NoOp in einer Datei)
     ├── domain/                              JPA-Entitaeten
     └── repository/                          Spring-Data-Repositories
 └── src/main/resources/

@@ -1,4 +1,4 @@
-package de.farmpulse.backend.ingest;
+package de.farmpulse.backend.ingest.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;

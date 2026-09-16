@@ -1,5 +1,8 @@
 package de.farmpulse.backend.ingest;
 
+import de.farmpulse.backend.ingest.service.FarmIngestService;
+import de.farmpulse.backend.ingest.service.TelemetryIngestService;
+import de.farmpulse.backend.ingest.service.WorldIngestService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.PostMapping;

@@ -1,4 +1,4 @@
-package de.farmpulse.backend.ingest;
+package de.farmpulse.backend.ingest.service;
 
 import de.farmpulse.backend.config.BridgeExchangeProperties;
 import de.farmpulse.backend.domain.Farm;

@@ -1,6 +1,7 @@
 package de.farmpulse.backend.processing;
 
 import de.farmpulse.backend.ingest.dto.TelemetryData;
+import org.springframework.stereotype.Component;
 
 /**
  * Erweiterungspunkt der Ingest-Pipeline fuer telemetry.json, zwischen dem
@@ -16,4 +17,14 @@ import de.farmpulse.backend.ingest.dto.TelemetryData;
 public interface TelemetryProcessingStep {
 
     TelemetryData process(TelemetryData raw);
+}
+
+/** Standardimplementierung von {@link TelemetryProcessingStep}: Passthrough. */
+@Component
+class NoOpTelemetryProcessingStep implements TelemetryProcessingStep {
+
+    @Override
+    public TelemetryData process(TelemetryData raw) {
+        return raw;
+    }
 }

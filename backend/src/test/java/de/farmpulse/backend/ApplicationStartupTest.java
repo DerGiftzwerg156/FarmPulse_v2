@@ -16,7 +16,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * Startet die Anwendung mit einem echten eingebetteten Webserver (nicht nur
  * einem MockServletContext) und laesst die Default-Konfiguration aus
  * application.yml unveraendert - insbesondere
- * {@code farmpulse.bridge.exchange-dir: ../mock-exchange}.
+ * {@code farmpulse.bridge.exchange-dir: ./mock-exchange}.
  *
  * <p>Deckt damit gezielt eine Bug-Klasse ab, die ein
  * {@code @SpringBootTest} im (impliziten) MOCK-Webumfeld nicht aufdeckt:

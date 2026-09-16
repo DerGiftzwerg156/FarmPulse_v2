@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import de.farmpulse.backend.domain.Farm;
 import de.farmpulse.backend.domain.WorldSnapshot;
+import de.farmpulse.backend.ingest.service.FarmIngestService;
+import de.farmpulse.backend.ingest.service.TelemetryIngestService;
+import de.farmpulse.backend.ingest.service.WorldIngestService;
 import de.farmpulse.backend.repository.FarmRepository;
 import de.farmpulse.backend.repository.TelemetrySnapshotRepository;
 import de.farmpulse.backend.repository.WorldSnapshotRepository;

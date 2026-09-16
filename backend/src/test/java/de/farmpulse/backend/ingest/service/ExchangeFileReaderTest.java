@@ -1,4 +1,4 @@
-package de.farmpulse.backend.ingest;
+package de.farmpulse.backend.ingest.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
