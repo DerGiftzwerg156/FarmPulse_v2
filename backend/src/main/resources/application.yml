@@ -17,6 +17,14 @@ spring:
   flyway:
     enabled: true
 
+# DEBUG-Logs fuer den Ingest-Pipeline-Code (Scheduler-Ticks, Datei-Lesen,
+# Verarbeitungsschritt, Persistenz - siehe de.farmpulse.backend.ingest)
+# zeigen, an welchem Schritt die Anwendung gerade ist. Ueber
+# FARMPULSE_LOG_LEVEL auf z.B. INFO reduzierbar, falls das zu gesprächig ist.
+logging:
+  level:
+    de.farmpulse.backend: ${FARMPULSE_LOG_LEVEL:DEBUG}
+
 # Konfiguration des Bridge-Austauschordners und der Poll-Intervalle, siehe
 # de.farmpulse.backend.config.BridgeExchangeProperties und
 # de.farmpulse.backend.ingest.IngestScheduler. Default-Verzeichnis passt zum

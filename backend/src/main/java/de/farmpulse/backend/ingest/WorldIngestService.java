@@ -55,6 +55,7 @@ public class WorldIngestService {
     @Transactional
     public Optional<WorldSnapshot> ingestIfChanged() {
         var file = properties.exchangeDirPath().resolve(FILENAME);
+        log.debug("Pruefe {} auf Aenderungen (zuletzt verarbeitet: {})", file, lastProcessedAt.get());
         Optional<ExchangeFile<WorldData>> read =
                 fileReader.readIfNewer(file, lastProcessedAt.get(), WorldData.class);
         if (read.isEmpty()) {
@@ -68,6 +69,7 @@ public class WorldIngestService {
         }
 
         ExchangeFile<WorldData> exchangeFile = read.get();
+        log.debug("world.json geaendert (recordedAt={}) - Verarbeitungsschritt starten", exchangeFile.recordedAt());
         WorldData data = processingStep.process(exchangeFile.data());
         Instant now = Instant.now();
 
@@ -77,11 +79,13 @@ public class WorldIngestService {
         data.storages().forEach(storage -> snapshot.addStorage(
                 new StorageSnapshot(storage.fillType(), storage.amount(), storage.capacity())));
 
+        log.debug("Speichere WorldSnapshot: farmId={}, fleetValue={}, felder={}, lagerbestaende={}",
+                farm.get().getId(), data.fleetValue(), data.fields().size(), data.storages().size());
         WorldSnapshot saved = snapshotRepository.save(snapshot);
 
         lastProcessedAt.set(exchangeFile.recordedAt());
-        log.debug("world.json eingelesen: {} Felder, {} Lagerbestaende, recordedAt={}",
-                data.fields().size(), data.storages().size(), exchangeFile.recordedAt());
+        log.debug("world.json eingelesen: snapshotId={}, {} Felder, {} Lagerbestaende, recordedAt={}",
+                saved.getId(), data.fields().size(), data.storages().size(), exchangeFile.recordedAt());
         return Optional.of(saved);
     }
 }

@@ -50,6 +50,7 @@ public class FarmIngestService {
     @Transactional
     public Optional<Farm> ingestIfChanged() {
         var file = properties.exchangeDirPath().resolve(FILENAME);
+        log.debug("Pruefe {} auf Aenderungen (zuletzt verarbeitet: {})", file, lastProcessedAt.get());
         Optional<ExchangeFile<FarmData>> read =
                 fileReader.readIfNewer(file, lastProcessedAt.get(), FarmData.class);
         if (read.isEmpty()) {
@@ -63,13 +64,16 @@ public class FarmIngestService {
         }
 
         ExchangeFile<FarmData> exchangeFile = read.get();
+        log.debug("farm.json geaendert (recordedAt={}) - Verarbeitungsschritt starten", exchangeFile.recordedAt());
         FarmData data = processingStep.process(exchangeFile.data());
 
         Farm existing = farm.get();
+        log.debug("Aktualisiere Farm id={}: farmName={}, playerName={}", existing.getId(), data.farmName(), data.playerName());
         existing.updateIdentity(data.farmName(), data.playerName(), Instant.now());
 
         lastProcessedAt.set(exchangeFile.recordedAt());
-        log.debug("farm.json eingelesen: farmName={}, playerName={}", data.farmName(), data.playerName());
+        log.debug("farm.json eingelesen: farmId={}, farmName={}, playerName={}",
+                existing.getId(), data.farmName(), data.playerName());
         return Optional.of(existing);
     }
 }

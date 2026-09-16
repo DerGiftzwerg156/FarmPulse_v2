@@ -1,5 +1,7 @@
 package de.farmpulse.backend.ingest;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -12,6 +14,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/ingest")
 public class IngestController {
+
+    private static final Logger log = LoggerFactory.getLogger(IngestController.class);
 
     private final TelemetryIngestService telemetryIngestService;
     private final WorldIngestService worldIngestService;
@@ -26,9 +30,12 @@ public class IngestController {
 
     @PostMapping("/trigger")
     public IngestTriggerResult trigger() {
+        log.debug("Manueller Ingest-Trigger ausgeloest");
         boolean telemetryIngested = telemetryIngestService.ingestIfChanged().isPresent();
         boolean worldIngested = worldIngestService.ingestIfChanged().isPresent();
         boolean farmIngested = farmIngestService.ingestIfChanged().isPresent();
-        return new IngestTriggerResult(telemetryIngested, worldIngested, farmIngested);
+        IngestTriggerResult result = new IngestTriggerResult(telemetryIngested, worldIngested, farmIngested);
+        log.debug("Manueller Ingest-Trigger abgeschlossen: {}", result);
+        return result;
     }
 }

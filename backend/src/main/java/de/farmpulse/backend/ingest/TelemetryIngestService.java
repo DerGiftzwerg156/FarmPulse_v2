@@ -51,6 +51,7 @@ public class TelemetryIngestService {
     @Transactional
     public Optional<TelemetrySnapshot> ingestIfChanged() {
         var file = properties.exchangeDirPath().resolve(FILENAME);
+        log.debug("Pruefe {} auf Aenderungen (zuletzt verarbeitet: {})", file, lastProcessedAt.get());
         Optional<ExchangeFile<TelemetryData>> read =
                 fileReader.readIfNewer(file, lastProcessedAt.get(), TelemetryData.class);
         if (read.isEmpty()) {
@@ -58,15 +59,21 @@ public class TelemetryIngestService {
         }
 
         ExchangeFile<TelemetryData> exchangeFile = read.get();
+        log.debug("telemetry.json geaendert (recordedAt={}) - Verarbeitungsschritt starten", exchangeFile.recordedAt());
         TelemetryData data = processingStep.process(exchangeFile.data());
         Instant now = Instant.now();
 
+        boolean[] farmNeuAngelegt = {false};
         Farm farm = farmRepository.findById(data.farmId())
                 .map(existing -> {
                     existing.touch(now);
                     return existing;
                 })
-                .orElseGet(() -> farmRepository.save(new Farm(data.farmId(), now)));
+                .orElseGet(() -> {
+                    farmNeuAngelegt[0] = true;
+                    return farmRepository.save(new Farm(data.farmId(), now));
+                });
+        log.debug("Farm {}: id={}", farmNeuAngelegt[0] ? "neu angelegt" : "aktualisiert", farm.getId());
 
         TelemetrySnapshot snapshot = new TelemetrySnapshot(
                 farm,
@@ -79,10 +86,13 @@ public class TelemetryIngestService {
                 data.money(),
                 exchangeFile.recordedAt(),
                 now);
+        log.debug("Speichere TelemetrySnapshot: farmId={}, money={}, recordedAt={}",
+                farm.getId(), data.money(), exchangeFile.recordedAt());
         TelemetrySnapshot saved = snapshotRepository.save(snapshot);
 
         lastProcessedAt.set(exchangeFile.recordedAt());
-        log.debug("telemetry.json eingelesen: farmId={}, recordedAt={}", data.farmId(), exchangeFile.recordedAt());
+        log.debug("telemetry.json eingelesen: farmId={}, snapshotId={}, recordedAt={}",
+                data.farmId(), saved.getId(), exchangeFile.recordedAt());
         return Optional.of(saved);
     }
 }

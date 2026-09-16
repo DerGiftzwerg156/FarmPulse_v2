@@ -56,11 +56,13 @@ public class ExchangeFileReader {
         }
 
         if (after != null && !mtime.isAfter(after)) {
+            log.debug("Austauschdatei {} unveraendert seit {} (mtime={}) - ueberspringe.", file, after, mtime);
             return Optional.empty();
         }
 
         try {
             T data = objectMapper.readValue(file.toFile(), type);
+            log.debug("Austauschdatei {} als {} gelesen (mtime={}).", file, type.getSimpleName(), mtime);
             return Optional.of(new ExchangeFile<>(data, mtime));
         } catch (IOException e) {
             log.warn("Konnte {} nicht als {} parsen: {}", file, type.getSimpleName(), e.getMessage());

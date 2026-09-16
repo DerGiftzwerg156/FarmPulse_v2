@@ -115,10 +115,22 @@ Alle Werte sind per Umgebungsvariable ueberschreibbar (siehe `src/main/resources
 | `FARMPULSE_TELEMETRY_INTERVAL_MS` | `5000` | Poll-Intervall telemetry.json |
 | `FARMPULSE_WORLD_INTERVAL_MS` | `30000` | Poll-Intervall world.json |
 | `FARMPULSE_FARM_INTERVAL_MS` | `60000` | Poll-Intervall farm.json |
+| `FARMPULSE_LOG_LEVEL` | `DEBUG` | Log-Level fuer `de.farmpulse.backend` (siehe Abschnitt "Logging") |
 
 Fuer einen echten FS25-Client zeigt `FARMPULSE_BRIDGE_EXCHANGE_DIR` auf
 `Documents/My Games/FarmingSimulator2025/modSettings/FarmPulseBridge/` (siehe
 [`Bridge/README.md`, Abschnitt "Installation"](../Bridge/README.md#installation)).
+
+## Logging
+
+`de.farmpulse.backend` laeuft standardmaessig auf `DEBUG` (ueber `FARMPULSE_LOG_LEVEL`
+auf z.B. `INFO` reduzierbar). Direkt nach dem Start protokolliert der
+`IngestScheduler` einmalig (auf `INFO`, unabhaengig vom Log-Level) den tatsaechlich
+aufgeloesten Austauschordner sowie die konfigurierten Poll-Intervalle - hilfreich, um
+z.B. eine falsch aufgeloeste Pfadkonfiguration sofort zu erkennen. Jeder Scheduler-Tick
+sowie jeder Schritt der Ingest-Pipeline (Datei gelesen/uebersprungen,
+Verarbeitungsschritt, Farm angelegt/aktualisiert, Snapshot gespeichert) wird zusaetzlich
+auf `DEBUG` protokolliert.
 
 ## Tests ausfuehren
 
