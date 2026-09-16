@@ -12,6 +12,7 @@ import de.farmpulse.backend.config.BridgeExchangeProperties;
 import de.farmpulse.backend.domain.Farm;
 import de.farmpulse.backend.domain.TelemetrySnapshot;
 import de.farmpulse.backend.ingest.dto.TelemetryData;
+import de.farmpulse.backend.ingest.event.FarmCreatedEvent;
 import de.farmpulse.backend.processing.TelemetryProcessingStep;
 import de.farmpulse.backend.repository.FarmRepository;
 import de.farmpulse.backend.repository.TelemetrySnapshotRepository;
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.invocation.InvocationOnMock;
+import org.springframework.context.ApplicationEventPublisher;
 
 class TelemetryIngestServiceTest {
 
@@ -32,6 +34,7 @@ class TelemetryIngestServiceTest {
     private ExchangeFileReader fileReader;
     private FarmRepository farmRepository;
     private TelemetrySnapshotRepository snapshotRepository;
+    private ApplicationEventPublisher eventPublisher;
     private TelemetryIngestService service;
 
     @BeforeEach
@@ -39,10 +42,12 @@ class TelemetryIngestServiceTest {
         fileReader = mock(ExchangeFileReader.class);
         farmRepository = mock(FarmRepository.class);
         snapshotRepository = mock(TelemetrySnapshotRepository.class);
+        eventPublisher = mock(ApplicationEventPublisher.class);
         TelemetryProcessingStep passthrough = raw -> raw;
         BridgeExchangeProperties properties = new BridgeExchangeProperties(exchangeDir.toString(), 5000, 30000, 60000);
 
-        service = new TelemetryIngestService(properties, fileReader, passthrough, farmRepository, snapshotRepository);
+        service = new TelemetryIngestService(
+                properties, fileReader, passthrough, farmRepository, snapshotRepository, eventPublisher);
 
         when(snapshotRepository.save(any(TelemetrySnapshot.class)))
                 .thenAnswer((InvocationOnMock invocation) -> invocation.getArgument(0));
@@ -78,6 +83,9 @@ class TelemetryIngestServiceTest {
         assertThat(snapshot.getGameMonth()).isEqualTo(6);
         assertThat(snapshot.getRecordedAt()).isEqualTo(recordedAt);
         verify(farmRepository).save(any(Farm.class));
+        ArgumentCaptor<FarmCreatedEvent> eventCaptor = ArgumentCaptor.forClass(FarmCreatedEvent.class);
+        verify(eventPublisher).publishEvent(eventCaptor.capture());
+        assertThat(eventCaptor.getValue().farm().getId()).isEqualTo(1L);
     }
 
     @Test
@@ -92,6 +100,7 @@ class TelemetryIngestServiceTest {
         service.ingestIfChanged();
 
         verify(farmRepository, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
