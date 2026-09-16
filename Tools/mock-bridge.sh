@@ -56,6 +56,9 @@ year=1
 days_per_month=3
 money=50000
 farm_id=1
+weather_type="SUN"
+temperature=15
+WEATHER_TYPES=("SUN" "PARTIALLY_CLOUDY" "CLOUDY" "RAIN" "SNOW")
 
 # --- Welt-Zustand (siehe FieldCollector/VehicleCollector/StorageCollector) ---
 fleet_value=125000
@@ -72,7 +75,7 @@ write_telemetry() {
     local tmp_file="${TELEMETRY_FILE}.tmp"
 
     cat > "${tmp_file}" <<JSON
-{"hour":${hour},"minute":${minute},"day":${day},"month":${month},"year":${year},"daysPerMonth":${days_per_month},"money":${money},"farmId":${farm_id}}
+{"hour":${hour},"minute":${minute},"day":${day},"month":${month},"year":${year},"daysPerMonth":${days_per_month},"money":${money},"farmId":${farm_id},"weatherType":"${weather_type}","temperature":${temperature}}
 JSON
     mv "${tmp_file}" "${TELEMETRY_FILE}"
 }
@@ -139,12 +142,19 @@ while true; do
         barley_amount=0
     fi
 
+    # Wetter/Temperatur ebenfalls leicht schwanken lassen (kein echtes
+    # Wettermodell - nur zu Demo-/Testzwecken, analog zu Kontostand/Lager oben).
+    temperature=$((temperature + (RANDOM % 3) - 1))
+    if [ "$((RANDOM % 5))" -eq 0 ]; then
+        weather_type="${WEATHER_TYPES[$((RANDOM % ${#WEATHER_TYPES[@]}))]}"
+    fi
+
     write_telemetry
     if [ "$((tick % WORLD_TICK_RATIO))" -eq 0 ]; then
         write_world
     fi
 
-    echo "[mock-bridge] Jahr ${year}, Tag ${day}/${days_per_month} (Monat ${month}), $(printf '%02d:%02d' "${hour}" "${minute}"), Kontostand ${money} EUR"
+    echo "[mock-bridge] Jahr ${year}, Tag ${day}/${days_per_month} (Monat ${month}), $(printf '%02d:%02d' "${hour}" "${minute}"), Kontostand ${money} EUR, ${weather_type} ${temperature}°C"
 
     tick=$((tick + 1))
     sleep "${INTERVAL_SECONDS}"

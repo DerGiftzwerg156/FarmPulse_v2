@@ -91,6 +91,8 @@ public class TelemetryIngestService {
                 data.minute(),
                 data.daysPerMonth(),
                 data.money(),
+                data.weatherType(),
+                data.temperature(),
                 exchangeFile.recordedAt(),
                 now);
         log.debug("Speichere TelemetrySnapshot: farmId={}, money={}, recordedAt={}",

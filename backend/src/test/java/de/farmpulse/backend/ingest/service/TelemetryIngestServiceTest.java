@@ -66,7 +66,7 @@ class TelemetryIngestServiceTest {
 
     @Test
     void legtNeueFarmAnUndSpeichertSnapshotWennFarmUnbekannt() {
-        TelemetryData data = new TelemetryData(8, 30, 4, 6, 2, 3, 84250, 1L);
+        TelemetryData data = new TelemetryData(8, 30, 4, 6, 2, 3, 84250, 1L, "SUN", 11.4);
         Instant recordedAt = Instant.parse("2024-06-04T08:30:00Z");
         when(fileReader.readIfNewer(eq(exchangeDir.resolve("telemetry.json")), eq(null), eq(TelemetryData.class)))
                 .thenReturn(Optional.of(new ExchangeFile<>(data, recordedAt)));
@@ -90,7 +90,7 @@ class TelemetryIngestServiceTest {
 
     @Test
     void verwendetVorhandeneFarmStattNeuerAnzulegen() {
-        TelemetryData data = new TelemetryData(8, 30, 4, 6, 2, 3, 84250, 1L);
+        TelemetryData data = new TelemetryData(8, 30, 4, 6, 2, 3, 84250, 1L, "SUN", 11.4);
         Instant recordedAt = Instant.parse("2024-06-04T08:30:00Z");
         when(fileReader.readIfNewer(any(), any(), eq(TelemetryData.class)))
                 .thenReturn(Optional.of(new ExchangeFile<>(data, recordedAt)));
@@ -105,7 +105,7 @@ class TelemetryIngestServiceTest {
 
     @Test
     void verwendetRecordedAtDesGelesenenFilesAlsUntergrenzeFuerDenNaechstenPoll() {
-        TelemetryData data = new TelemetryData(8, 30, 4, 6, 2, 3, 84250, 1L);
+        TelemetryData data = new TelemetryData(8, 30, 4, 6, 2, 3, 84250, 1L, "SUN", 11.4);
         Instant recordedAt = Instant.parse("2024-06-04T08:30:00Z");
         when(fileReader.readIfNewer(any(), any(), eq(TelemetryData.class)))
                 .thenReturn(Optional.of(new ExchangeFile<>(data, recordedAt)))

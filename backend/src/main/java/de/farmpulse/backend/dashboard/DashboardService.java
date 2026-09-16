@@ -8,6 +8,7 @@ import de.farmpulse.backend.dashboard.dto.FieldsSummary;
 import de.farmpulse.backend.dashboard.dto.GameTime;
 import de.farmpulse.backend.dashboard.dto.HistoryPoint;
 import de.farmpulse.backend.dashboard.dto.StorageItem;
+import de.farmpulse.backend.dashboard.dto.WeatherInfo;
 import de.farmpulse.backend.domain.Farm;
 import de.farmpulse.backend.domain.FieldSnapshot;
 import de.farmpulse.backend.domain.StorageSnapshot;
@@ -57,12 +58,14 @@ public class DashboardService {
 
         FarmInfo farmInfo = new FarmInfo(farm.getId(), farm.getName(), farm.getPlayerName());
         GameTime gameTime = toGameTime(telemetry);
+        WeatherInfo weather = new WeatherInfo(telemetry.getWeatherType(), telemetry.getTemperature());
         long fleetValue = world.map(WorldSnapshot::getFleetValue).orElse(0L);
         FieldsSummary fields = toFieldsSummary(world.orElse(null), farm.getId());
         List<StorageItem> storages = world.map(this::toStorageItems).orElseGet(List::of);
         List<Alert> alerts = deriveAlerts(telemetry.getMoney(), storages);
 
-        return new DashboardResponse(farmInfo, gameTime, telemetry.getMoney(), fleetValue, fields, storages, alerts);
+        return new DashboardResponse(farmInfo, gameTime, weather, telemetry.getMoney(), fleetValue, fields, storages,
+                alerts);
     }
 
     @Transactional(readOnly = true)

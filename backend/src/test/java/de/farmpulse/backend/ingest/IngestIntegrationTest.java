@@ -86,7 +86,8 @@ class IngestIntegrationTest {
     @Test
     void liestAlleDreiAustauschdateienEinUndHistorisiertSieInMariaDb() throws IOException {
         Files.writeString(exchangeDir.resolve("telemetry.json"),
-                "{\"hour\":8,\"minute\":30,\"day\":4,\"month\":6,\"year\":2,\"daysPerMonth\":3,\"money\":84250,\"farmId\":1}");
+                "{\"hour\":8,\"minute\":30,\"day\":4,\"month\":6,\"year\":2,\"daysPerMonth\":3,\"money\":84250,"
+                        + "\"farmId\":1,\"weatherType\":\"SUN\",\"temperature\":11.4}");
         Files.writeString(exchangeDir.resolve("world.json"),
                 "{\"fleetValue\":125000,"
                         + "\"fields\":[{\"fieldId\":1,\"ownerFarmId\":1,\"sizeHa\":4.53,\"price\":32000}],"

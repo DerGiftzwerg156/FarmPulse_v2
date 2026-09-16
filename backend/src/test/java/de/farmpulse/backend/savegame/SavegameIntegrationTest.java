@@ -82,7 +82,8 @@ class SavegameIntegrationTest {
                 .isInstanceOf(BackstoryAlreadySubmittedException.class);
 
         Files.writeString(exchangeDir.resolve("telemetry.json"),
-                "{\"hour\":8,\"minute\":30,\"day\":4,\"month\":6,\"year\":2,\"daysPerMonth\":3,\"money\":84250,\"farmId\":1}");
+                "{\"hour\":8,\"minute\":30,\"day\":4,\"month\":6,\"year\":2,\"daysPerMonth\":3,\"money\":84250,"
+                        + "\"farmId\":1,\"weatherType\":\"SUN\",\"temperature\":11.4}");
         assertThat(telemetryIngestService.ingestIfChanged()).isPresent();
 
         SavegameStatusResponse afterTelemetry = savegameService.getStatus();

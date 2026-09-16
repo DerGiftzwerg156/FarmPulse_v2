@@ -52,6 +52,12 @@ public class TelemetrySnapshot {
     @Column(name = "money", nullable = false)
     private long money;
 
+    @Column(name = "weather_type", nullable = false, length = 32)
+    private String weatherType;
+
+    @Column(name = "temperature", nullable = false)
+    private double temperature;
+
     /** Realer Zeitpunkt des Exports (Datei-mtime von telemetry.json). */
     @Column(name = "recorded_at", nullable = false)
     private Instant recordedAt;
@@ -64,7 +70,8 @@ public class TelemetrySnapshot {
     }
 
     public TelemetrySnapshot(Farm farm, int gameYear, int gameMonth, int gameDay, int gameHour,
-            int gameMinute, int daysPerMonth, long money, Instant recordedAt, Instant createdAt) {
+            int gameMinute, int daysPerMonth, long money, String weatherType, double temperature,
+            Instant recordedAt, Instant createdAt) {
         this.farm = farm;
         this.gameYear = gameYear;
         this.gameMonth = gameMonth;
@@ -73,6 +80,8 @@ public class TelemetrySnapshot {
         this.gameMinute = gameMinute;
         this.daysPerMonth = daysPerMonth;
         this.money = money;
+        this.weatherType = weatherType;
+        this.temperature = temperature;
         this.recordedAt = recordedAt;
         this.createdAt = createdAt;
     }
@@ -111,6 +120,14 @@ public class TelemetrySnapshot {
 
     public long getMoney() {
         return money;
+    }
+
+    public String getWeatherType() {
+        return weatherType;
+    }
+
+    public double getTemperature() {
+        return temperature;
     }
 
     public Instant getRecordedAt() {

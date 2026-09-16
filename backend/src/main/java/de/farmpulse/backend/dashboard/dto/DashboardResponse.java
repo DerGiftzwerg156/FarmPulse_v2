@@ -12,6 +12,7 @@ import java.util.List;
 public record DashboardResponse(
         FarmInfo farm,
         GameTime gameTime,
+        WeatherInfo weather,
         long money,
         long fleetValue,
         FieldsSummary fields,

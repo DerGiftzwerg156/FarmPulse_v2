@@ -71,8 +71,8 @@ class MailboxGenerationServiceTest {
     void generiertNachrichtAusVorlageMitAktuellerSpielzeit() {
         Farm farm = farmMitId(1L);
         when(farmRepository.findTopByOrderByUpdatedAtDesc()).thenReturn(Optional.of(farm));
-        TelemetrySnapshot telemetry = new TelemetrySnapshot(farm, 2025, 6, 12, 8, 30, 30, 50_000L, Instant.now(),
-                Instant.now());
+        TelemetrySnapshot telemetry = new TelemetrySnapshot(farm, 2025, 6, 12, 8, 30, 30, 50_000L, "SUN", 11.4,
+                Instant.now(), Instant.now());
         when(telemetrySnapshotRepository.findTopByFarmIdOrderByRecordedAtDesc(1L)).thenReturn(Optional.of(telemetry));
         when(mailboxMessageRepository.save(any(MailboxMessage.class)))
                 .thenAnswer((InvocationOnMock invocation) -> invocation.getArgument(0));

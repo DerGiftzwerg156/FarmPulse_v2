@@ -65,8 +65,8 @@ class DashboardServiceTest {
     void liefertAggregiertenZustandOhneWorldSnapshot() {
         Farm farm = farmMitId(1L);
         when(farmRepository.findTopByOrderByUpdatedAtDesc()).thenReturn(Optional.of(farm));
-        TelemetrySnapshot telemetry = new TelemetrySnapshot(farm, 2025, 6, 12, 8, 30, 30, 50_000L, Instant.now(),
-                Instant.now());
+        TelemetrySnapshot telemetry = new TelemetrySnapshot(farm, 2025, 6, 12, 8, 30, 30, 50_000L, "SUN", 11.4,
+                Instant.now(), Instant.now());
         when(telemetrySnapshotRepository.findTopByFarmIdOrderByRecordedAtDesc(1L)).thenReturn(Optional.of(telemetry));
         when(worldSnapshotRepository.findTopByFarmIdOrderByRecordedAtDesc(1L)).thenReturn(Optional.empty());
 
@@ -80,14 +80,16 @@ class DashboardServiceTest {
         assertThat(response.storages()).isEmpty();
         assertThat(response.gameTime().year()).isEqualTo(2025);
         assertThat(response.gameTime().hour()).isEqualTo(8);
+        assertThat(response.weather().type()).isEqualTo("SUN");
+        assertThat(response.weather().temperature()).isEqualTo(11.4);
     }
 
     @Test
     void aggregiertFelderNurDerEigenenFarmUndLagerbestaende() {
         Farm farm = farmMitId(1L);
         when(farmRepository.findTopByOrderByUpdatedAtDesc()).thenReturn(Optional.of(farm));
-        TelemetrySnapshot telemetry = new TelemetrySnapshot(farm, 2025, 6, 12, 8, 30, 30, 100_000L, Instant.now(),
-                Instant.now());
+        TelemetrySnapshot telemetry = new TelemetrySnapshot(farm, 2025, 6, 12, 8, 30, 30, 100_000L, "SUN", 11.4,
+                Instant.now(), Instant.now());
         when(telemetrySnapshotRepository.findTopByFarmIdOrderByRecordedAtDesc(1L)).thenReturn(Optional.of(telemetry));
 
         WorldSnapshot world = new WorldSnapshot(farm, 250_000L, Instant.now(), Instant.now());
@@ -113,8 +115,8 @@ class DashboardServiceTest {
     void meldetNegativenKontostandAlsAlert() {
         Farm farm = farmMitId(1L);
         when(farmRepository.findTopByOrderByUpdatedAtDesc()).thenReturn(Optional.of(farm));
-        TelemetrySnapshot telemetry = new TelemetrySnapshot(farm, 2025, 6, 12, 8, 30, 30, -500L, Instant.now(),
-                Instant.now());
+        TelemetrySnapshot telemetry = new TelemetrySnapshot(farm, 2025, 6, 12, 8, 30, 30, -500L, "SUN", 11.4,
+                Instant.now(), Instant.now());
         when(telemetrySnapshotRepository.findTopByFarmIdOrderByRecordedAtDesc(1L)).thenReturn(Optional.of(telemetry));
         when(worldSnapshotRepository.findTopByFarmIdOrderByRecordedAtDesc(1L)).thenReturn(Optional.empty());
 
@@ -129,8 +131,8 @@ class DashboardServiceTest {
         when(farmRepository.findTopByOrderByUpdatedAtDesc()).thenReturn(Optional.of(farm));
         Instant t1 = Instant.parse("2025-01-01T10:00:00Z");
         Instant t2 = Instant.parse("2025-01-01T10:00:05Z");
-        TelemetrySnapshot newer = new TelemetrySnapshot(farm, 2025, 1, 1, 10, 0, 30, 200L, t2, t2);
-        TelemetrySnapshot older = new TelemetrySnapshot(farm, 2025, 1, 1, 9, 59, 30, 100L, t1, t1);
+        TelemetrySnapshot newer = new TelemetrySnapshot(farm, 2025, 1, 1, 10, 0, 30, 200L, "SUN", 11.4, t2, t2);
+        TelemetrySnapshot older = new TelemetrySnapshot(farm, 2025, 1, 1, 9, 59, 30, 100L, "RAIN", 9.8, t1, t1);
         when(telemetrySnapshotRepository.findByFarmIdOrderByRecordedAtDesc(eq(1L), any(Pageable.class)))
                 .thenReturn(List.of(newer, older));
 

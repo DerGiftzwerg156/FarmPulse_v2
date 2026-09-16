@@ -11,6 +11,7 @@ import de.farmpulse.backend.dashboard.dto.FarmInfo;
 import de.farmpulse.backend.dashboard.dto.FieldsSummary;
 import de.farmpulse.backend.dashboard.dto.GameTime;
 import de.farmpulse.backend.dashboard.dto.HistoryPoint;
+import de.farmpulse.backend.dashboard.dto.WeatherInfo;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,7 @@ class DashboardControllerTest {
         DashboardResponse response = new DashboardResponse(
                 new FarmInfo(1L, "Sonnenhof", "Keno"),
                 new GameTime(2025, 6, 12, 8, 30, 30),
+                new WeatherInfo("SUN", 11.4),
                 50_000L,
                 250_000L,
                 new FieldsSummary(1, 5.0, 20_000L, List.of()),
@@ -46,6 +48,8 @@ class DashboardControllerTest {
                 .andExpect(jsonPath("$.money").value(50_000))
                 .andExpect(jsonPath("$.fleetValue").value(250_000))
                 .andExpect(jsonPath("$.fields.count").value(1))
+                .andExpect(jsonPath("$.weather.type").value("SUN"))
+                .andExpect(jsonPath("$.weather.temperature").value(11.4))
                 .andExpect(jsonPath("$.alerts[0].message").value("Der Kontostand ist negativ."));
     }
 
