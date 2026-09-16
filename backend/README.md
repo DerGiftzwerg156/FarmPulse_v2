@@ -32,6 +32,14 @@ backend/
     │   ├── DashboardController.java         GET /api/dashboard, GET /api/dashboard/history
     │   ├── DashboardService.java            Aggregiert Farm/Telemetrie/Welt zum aktuellen Zustand
     │   └── dto/
+    ├── fields/                              REST-Schnittstelle fuer die Felder-Seite (siehe unten)
+    │   ├── FieldsController.java            GET /api/fields
+    │   ├── FieldsService.java               Eigene Felder samt Anbaudaten + Zusammenfassung
+    │   └── dto/
+    ├── finance/                              REST-Schnittstelle fuer die Finanzen-Seite (siehe unten)
+    │   ├── FinanceController.java           GET /api/finance
+    │   ├── FinanceService.java              Kontostand-Verlauf + Einnahmen/Ausgaben aus Telemetrie-Deltas
+    │   └── dto/
     ├── mailbox/                             Postfach/Farm-Mailbox (siehe unten)
     │   ├── MailboxController.java           GET /api/mailbox, POST /api/mailbox/{id}/read
     │   ├── MailboxService.java              Liest Nachrichten der aktiven Farm
@@ -43,7 +51,7 @@ backend/
     ├── application.yml
     ├── application-docker.yml            Ueberschreibt DB-Host/Austauschordner fuer den Container-Betrieb
     ├── mailbox/mailbox-templates.json     Mock-Nachrichtenvorlagen fuer MailboxGenerationService
-    └── db/migration/                        Flyway-Migrationen (V1-V7)
+    └── db/migration/                        Flyway-Migrationen (V1-V9)
 ```
 
 ### Ingest-Pipeline
@@ -95,13 +103,38 @@ Austauschdateien stammen (siehe `backend/docs/MOCK_DASHBOARD_DATENLUECKEN.md` fu
 Mock-Datenpunkte ohne aktuelle Bridge-Quelle):
 
 - `GET /api/dashboard` - aggregierter Zustand der aktiven Farm: Stammdaten, aktuelle
-  Spielzeit, Kontostand, Fuhrparkwert, die der Farm gehoerenden Felder
-  (`FieldSnapshot.ownerFarmId == Farm.id`), alle Lagerbestaende mit Fuellgrad sowie
-  einfache, aus diesen Werten abgeleitete Warnungen (negativer Kontostand, Lager
-  ueber 90% voll). Liefert `404 Not Found`, solange noch keine Farm/Telemetrie
-  vorliegt (siehe `savegame/` oben).
+  Spielzeit, Wetter (Typ + Temperatur), Kontostand, Fuhrparkwert, die der Farm
+  gehoerenden Felder (`FieldSnapshot.ownerFarmId == Farm.id`), alle Lagerbestaende mit
+  Fuellgrad sowie einfache, aus diesen Werten abgeleitete Warnungen (negativer
+  Kontostand, Lager ueber 90% voll). Liefert `404 Not Found`, solange noch keine
+  Farm/Telemetrie vorliegt (siehe `savegame/` oben).
 - `GET /api/dashboard/history?limit=` - die letzten `limit` (Default 20, max. 200)
   Kontostand-Werte in chronologischer Reihenfolge, fuer die Sparkline im Dashboard.
+
+### Felder (`fields/`)
+
+`FieldsController` stellt die Feld-Telemetrie fuer die Angular-Seite `/fields`
+(Vorlage `MockDashboard/Fields.html`) bereit:
+
+- `GET /api/fields` - alle der aktiven Farm gehoerenden Felder
+  (`FieldSnapshot.ownerFarmId == Farm.id`) samt Anbaudaten (Fruchtart,
+  Wachstumsstand 0..1, geschaetzte Erntemenge in Litern - `null`, wenn das Feld
+  aktuell keine Frucht traegt) sowie einer Zusammenfassung (Anzahl, Gesamtflaeche,
+  Gesamtwert, geschaetzter Gesamtertrag). Liefert `404 Not Found` ohne aktive Farm,
+  eine leere Zusammenfassung ohne `world.json`-Snapshot.
+
+### Finanzen (`finance/`)
+
+`FinanceController` stellt Kontostand-Verlauf sowie Einnahmen/Ausgaben fuer die
+Angular-Seite `/finance` (Vorlage `MockDashboard/Finances.html`) bereit:
+
+- `GET /api/finance?limit=` - aktueller Kontostand, Kontostand-Delta sowie
+  Einnahmen/Ausgaben ueber die letzten `limit` (Default 20, max. 200)
+  `TelemetrySnapshot`s: Summe aller positiven Kontostand-Deltas zwischen
+  aufeinanderfolgenden Snapshots = Einnahmen, Summe aller negativen Deltas =
+  Ausgaben. Die Bridge liefert keine Einzeltransaktionen, daher sind das
+  **aggregierte Naeherungswerte** aus der Kontostand-Historie, keine benannten
+  Buchungen (siehe `backend/docs/MOCK_DASHBOARD_DATENLUECKEN.md`).
 
 ### Postfach / Farm-Mailbox (`mailbox/`)
 
@@ -117,8 +150,10 @@ statische Beispielvorlage aus `mailbox-templates.json`
 (`src/main/resources/mailbox/`) ausgewaehlt. Die Stelle, an der spaeter
 generierter statt vorlagenbasierter Inhalt eingesetzt werden soll, ist in
 `MailboxGenerationService.selectTemplate()` explizit mit
-`TODO(KI-Integration)` markiert. Es existiert bewusst (noch) keine eigene
-Frontend-Seite dafuer.
+`TODO(KI-Integration)` markiert. Frontend: Dashboard-Vorschau der letzten 5
+Nachrichten sowie eine eigene `/mailbox`-Seite (Vorlage
+`MockDashboard/Postfach.html`) mit Suche/Filtern; beide oeffnen Nachrichten
+in einem Modal.
 
 ### Bekannte Einschraenkung: eine aktive Farm pro Instanz
 
@@ -136,10 +171,11 @@ fuer den Erweiterungsprozess).
 | Tabelle | Inhalt |
 |---|---|
 | `farm` | Ein Betrieb, ID = FarmID aus `telemetry.json`. Name/Spielername aus `farm.json`. |
-| `telemetry_snapshot` | Eine Zeile je tatsaechlich geaendertem `telemetry.json`-Poll (Kontostand, Spielzeit/-kalender). |
+| `telemetry_snapshot` | Eine Zeile je tatsaechlich geaendertem `telemetry.json`-Poll (Kontostand, Spielzeit/-kalender, Wetter-Typ + Temperatur). |
 | `world_snapshot` | Eine Zeile je tatsaechlich geaendertem `world.json`-Poll (Fuhrpark-Wert). |
-| `field_snapshot` | Volle Feldliste je `world_snapshot` (kein Delta, siehe Bridge-Format). |
+| `field_snapshot` | Volle Feldliste je `world_snapshot` (kein Delta, siehe Bridge-Format). Zusaetzlich zu Groesse/Preis optional Fruchtart, Wachstumsstand (0..1) und geschaetzte Erntemenge in Litern, sofern das Feld aktuell eine Frucht traegt. |
 | `storage_snapshot` | Volle Lagerbestandsliste je `world_snapshot`. |
+| `mailbox_message` | Eine Zeile je generierter Postfach-Nachricht (siehe "Postfach / Farm-Mailbox" oben). |
 | `savegame_backstory` | Die einmalig eingegebene "Vorgeschichte" eines Savegames (siehe "Savegame-Start" oben). Hoechstens eine Zeile; `farm_id` nullable, solange die Farm noch nicht bekannt ist. |
 
 Schema-Aenderungen erfolgen ausschliesslich ueber neue Flyway-Migrationen unter
