@@ -53,10 +53,19 @@ abgeglichen:
    `AbstractMission` (Category 59, ebenfalls mit echtem Quellcode) wurde
    manuell bereitgestellt und ausgewertet. Sie referenziert an mehreren
    Stellen `g_currentMission.environment` und `g_localPlayer`.
-3. Das **[FS25 AI Coding Reference](https://github.com/XelaNull/FS25_UsedPlus/tree/master/FS25_AI_Coding_Reference)**
-   von XelaNull/FS25_UsedPlus - explizit gegen eine tatsaechlich
+3. Das **[FS25 AI Coding Reference](https://github.com/Seamforge/FS25_UsedPlus/tree/master/FS25_AI_Coding_Reference)**
+   von Seamforge/FS25_UsedPlus (**Korrektur**: in einer frueheren Fassung
+   dieser Datei faelschlich `XelaNull/FS25_UsedPlus` zugeschrieben - dieses
+   Repo existiert nicht als Quelle fuer diese Mod, die Verwechslung stammt
+   vermutlich aus einem unabhaengigen, thematisch unverwandten Discord-Bot-
+   Repo desselben Nutzernamens) - explizit gegen eine tatsaechlich
    veroeffentlichte Mod (UsedPlus, Version 2.6.0) validiert, mit
-   Datei-/Zeilenbelegen aus deren Quellcode (z.B. `CreditSystem.lua:223-227`).
+   Datei-/Zeilenbelegen aus deren Quellcode. **Wichtige Einschraenkung**: die
+   Referenzdatei buendelt mehrere Environment-Felder (`currentDay`,
+   `currentMonth`, `currentYear`) unter einem gemeinsamen "validiert"-Haken,
+   obwohl `CreditSystem.lua` (die dort zitierte Belegstelle) nachweislich nur
+   `currentYear` tatsaechlich verwendet - `currentMonth` selbst wurde dort nie
+   durch echten Aufrufcode belegt (siehe Korrektur bei "Monat" unten).
 
 Fuer die neu hinzugekommenen Werte (Hofname, Spielername,
 Fuhrpark-Wert, Lagerbestaende) kamen zusaetzlich vier echte, aktuell
@@ -66,7 +75,9 @@ unten fuer Details je Wert):
 
 4. **[FS25_InfoDisplayExtension](https://github.com/Achimobil/FS25_InfoDisplayExtension)** (Achimobil)
 5. **[FS25_Tardis](https://github.com/sperrgebiet/FS25_Tardis)** (sperrgebiet)
-6. **[FS25_UsedPlus](https://github.com/Seamforge/FS25_UsedPlus)** (Seamforge, nicht zu verwechseln mit der FS25 AI Coding Reference oben, die im selben Ursprungs-Repo von XelaNull liegt)
+6. **[FS25_UsedPlus](https://github.com/Seamforge/FS25_UsedPlus)** (Seamforge) - derselbe Ursprungs-Repo
+   wie die FS25 AI Coding Reference oben (Quelle 3); hier jedoch der eigentliche Mod-Code
+   selbst als Beleg, nicht die separate Referenzdokumentation im Unterordner
 7. **[FS25_UpgradableFactories](https://github.com/demortes/FS25_UpgradableFactories)** (demortes)
 
 Fuer Wetter (Temperatur, Wettertyp) sowie Feld-Anbaudaten/Ertragsschaetzung
@@ -105,7 +116,7 @@ weitere Quellen dazu:
 |---|---|---|
 | Stunde/Minute | `g_currentMission.environment.dayTime`, in Millisekunden seit Mitternacht, umgerechnet in Stunde/Minute | **Bestaetigt** (Quelle 2): `AbstractMission:getMinutesLeft()` verrechnet `environment.dayTime` direkt mit `24*60*60*1000` |
 | Tag im Monat | `g_currentMission.environment:getDayInPeriodFromDay(environment.currentMonotonicDay)` | **Bestaetigt** (Quelle 2): `AbstractMission:setDefaultEndDate()` berechnet den Tag-im-Monat exakt so - **kein** rohes Feld `currentDayInPeriod` (fruehere Annahme war falsch, siehe Korrektur unten). Quelle 3 belegt zwar auch ein rohes Feld `environment.currentDay`, dessen Semantik (Tag-im-Monat vs. fortlaufender Tageszaehler wie `currentMonotonicDay`) aus dem eingesehenen Ausschnitt aber nicht eindeutig hervorgeht - deshalb bewusst weiter die von Quelle 2 eindeutig belegte Methode verwendet |
-| Monat | `g_currentMission.environment.currentMonth` (1-12) | **Bestaetigt** (Quelle 3, produktiv validiert) |
+| Monat | `TelemetryCollector.calendarMonthFromPeriod(environment.currentPeriod, environment.daylight.latitude < 0)` | **Bestaetigt** (Quelle 10, Quelle 11): **Korrektur** gegenueber einer fruehen Fassung dieser Bridge, die faelschlich ein rohes Feld `environment.currentMonth` annahm (angeblich durch Quelle 3 "produktiv validiert") - dieses Feld existiert in FS25 nicht. Tatsaechlich liefert die Engine nur `environment.currentPeriod` (1-12, saisonbezogen: Periode 1 = "frueher Fruehling"). Die Umrechnung in einen Kalendermonat uebernimmt clientseitig `I18N:formatPeriod(period)` (Quelle 10, `I18N.lua`) per `m = period + 2 + (isSouthern and 6 or 0)`, wobei `isSouthern = environment.daylight.latitude < 0` - exakt dieselbe Formel implementiert `TelemetryCollector.calendarMonthFromPeriod()`. Quelle 11 (`VDTelemetry`, echter veroeffentlichter Mod) bestaetigt unabhaengig, dass Periode 1 auf einer Nordhalbkugel-Karte Maerz entspricht (bzw. September auf der Suedhalbkugel) |
 | Jahr | `g_currentMission.environment.currentYear` | **Bestaetigt** (Quelle 3, produktiv validiert) |
 | Tage je Monat | `g_currentMission.environment.daysPerPeriod` | **Bestaetigt** (Quelle 2): direktes Feld, referenziert in `AbstractMission:setDefaultEndDate()` |
 | FarmID | `g_localPlayer.farmId`, Fallback `g_currentMission:getFarmId()` | **Bestaetigt** (Quelle 2, zusaetzlich gestuetzt durch Quelle 1): `AbstractMission:update()` prueft `g_localPlayer.farmId == self.farmId` direkt gegen ein echtes Feld. Unabhaengig davon zeigt `Player.md` in der Community-LUADOC (Quelle 1) in `Player.createServerInstance()` den Quellcode `self.farmId = farmId`, durchgaengig verwendet (u.a. `g_farmManager:getSpawnPoint(self.farmId)`) - dasselbe Feld auf derselben Klassenfamilie, unabhaengig bestaetigt. `getFarmId()` bleibt als unbestaetigter, aber in der Community weit verbreiteter Fallback |
@@ -160,6 +171,29 @@ Bridge abstuerzt. Das Verhalten laesst sich also risikofrei ausprobieren.
   Rohwerte (Wachstumsstand, Literwert) intern gelesen werden konnten - siehe
   `FieldCollector.computeCropInfo()`, das ohne `fruitTypeName` bewusst nichts
   zurueckgibt, statt eine unbenannte Frucht zu exportieren.
+- **`fruitType`/`growthState` je Feld koennen von der tatsaechlich im Spiel
+  angebauten Frucht abweichen** - zwei bestaetigte, mit der Read-only-Natur
+  dieser Bridge nicht vollstaendig behebbare Ursachen:
+  1. **Einzelpunkt-Abtastung** (bestaetigt, Quelle 9): `field:getFieldState()`
+     liefert den Zustand exakt einer abgetasteten Stelle des Feldes (dem
+     Polygon-Mittelpunkt), keine Flaechen-Aggregation. Bei einem grossen Feld,
+     das der Spieler nur teilweise neu eingesaet/beerntet hat, kann der an
+     diesem einen Punkt gemessene Zustand vom Rest der Flaeche abweichen -
+     eine inhaerente Engine-Grenze, kein Bug dieser Bridge.
+  2. **Farmland-Zuordnungs-Kollision beim unbestaetigten Fallback** (jetzt
+     gehaertet, siehe `FieldCollector.shouldReplaceCropEntry()`): Die
+     bestaetigte Zuordnung ueber `field.farmland.id` ist laut Engine
+     (`FieldManager.farmlandIdFieldMapping`) eindeutig 1:1. Der Fallback
+     `fieldState.farmlandId` (fuer den seltenen Fall, dass `field.farmland`
+     fehlt) ist dagegen selbst wieder nur ueber denselben Einzelpunkt
+     ermittelt und daher bei fehlerhaften/unvollstaendigen Kartendaten
+     theoretisch mehrdeutig. Vor dieser Haertung konnte die (nicht
+     garantierte) Iterationsreihenfolge von `g_fieldManager.fields`
+     nichtdeterministisch dazu fuehren, dass ein Fallback-Eintrag eine
+     bereits bestaetigte Zuordnung eines anderen Feldes ueberschreibt -
+     `FarmPulseBridge.readFieldCrops()` verwirft einen Fallback-Eintrag jetzt
+     immer, sobald fuer dieselbe farmlandId bereits ein bestaetigter Eintrag
+     vorliegt.
 - **`bestPricePer1000L`/`bestPricePeriod`** koennen fuer einen Fill-Typ `null`
   bleiben, obwohl `currentPricePer1000L` erfolgreich gelesen wurde: die
   Preishistorie (`fillType.economy.history`) wird laut Quelle 10 nur

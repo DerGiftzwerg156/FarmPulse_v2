@@ -38,6 +38,28 @@ Versionsnummern der Bridge folgen [Semantic Versioning](https://semver.org/lang/
   Bridge in anderer Form - direkt in `telemetry.json`, ohne eigenes
   `WeatherCollector`-Modul - wieder zurueck, siehe unten.)
 
+## [2.2.1] - Bridge
+
+- **Bugfix**: `month` in `telemetry.json` war immer `0`, da
+  `environment.currentMonth` in FS25 nicht existiert (fruehere, falsch
+  zugeordnete Quellenangabe - siehe `Bridge/README.md`, "Monat"-Zeile der
+  Konfidenz-Tabelle). Der Monat wird jetzt korrekt aus
+  `environment.currentPeriod` plus derselben Nord-/Suedhalbkugel-Verschiebung
+  berechnet, die die Engine selbst in `I18N:formatPeriod()` verwendet
+  (`TelemetryCollector.calendarMonthFromPeriod()`, neu, unit-getestet).
+- **Bugfix**: `fruitType`/`growthState` einzelner Felder in `world.json`
+  konnten durch eine Kollision zwischen der bestaetigten
+  `field.farmland`-Zuordnung und dem unbestaetigten
+  `fieldState.farmlandId`-Fallback nichtdeterministisch mit den Anbaudaten
+  eines anderen Feldes ueberschrieben werden. `FarmPulseBridge.readFieldCrops()`
+  verwirft jetzt einen Fallback-Eintrag, sobald fuer dieselbe farmlandId
+  bereits ein bestaetigter Eintrag vorliegt (`FieldCollector.shouldReplaceCropEntry()`,
+  neu, unit-getestet). Ausserdem in `Bridge/README.md` dokumentiert: die
+  verbleibende, inhaerente Engine-Grenze der Einzelpunkt-Abtastung von
+  `field:getFieldState()` (misst nur den Feld-Polygon-Mittelpunkt, keine
+  Flaechen-Aggregation) kann weiterhin dazu fuehren, dass der gemeldete Zustand
+  bei teilweise bewirtschafteten Feldern vom Rest der Flaeche abweicht.
+
 ## [2.2.0] - Bridge
 
 - Aktuellen Wettertyp + Temperatur zu `telemetry.json` ergaenzt

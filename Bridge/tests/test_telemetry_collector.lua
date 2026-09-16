@@ -32,6 +32,30 @@ return function()
         testkit.assertEquals(59, TelemetryCollector.normalizeMinute(-1))
     end)
 
+    testkit.run("calendarMonthFromPeriod: Periode 1 auf Nordhalbkugel ist Maerz", function()
+        testkit.assertEquals(3, TelemetryCollector.calendarMonthFromPeriod(1, false))
+    end)
+
+    testkit.run("calendarMonthFromPeriod: Periode 1 auf Suedhalbkugel ist September", function()
+        testkit.assertEquals(9, TelemetryCollector.calendarMonthFromPeriod(1, true))
+    end)
+
+    testkit.run("calendarMonthFromPeriod: Periode 11 auf Nordhalbkugel wraps auf Januar", function()
+        testkit.assertEquals(1, TelemetryCollector.calendarMonthFromPeriod(11, false))
+    end)
+
+    testkit.run("calendarMonthFromPeriod: Periode 12 auf Nordhalbkugel ist Februar", function()
+        testkit.assertEquals(2, TelemetryCollector.calendarMonthFromPeriod(12, false))
+    end)
+
+    testkit.run("calendarMonthFromPeriod: fehlende Periode faellt auf 1 (Maerz, Nordhalbkugel) zurueck", function()
+        testkit.assertEquals(3, TelemetryCollector.calendarMonthFromPeriod(nil, false))
+    end)
+
+    testkit.run("calendarMonthFromPeriod: fehlende Hemisphaere wird als Nordhalbkugel behandelt", function()
+        testkit.assertEquals(3, TelemetryCollector.calendarMonthFromPeriod(1, nil))
+    end)
+
     testkit.run("buildPayload: normalisiert alle Felder", function()
         local payload = TelemetryCollector.buildPayload({
             hour = 8,

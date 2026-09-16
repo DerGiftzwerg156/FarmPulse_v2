@@ -89,6 +89,34 @@ function FieldCollector.computeCropInfo(cropRaw)
     }
 end
 
+--- Entscheidet, ob ein neuer roher Anbau-Eintrag fuer eine Farmland-ID einen
+-- bereits vorhandenen ersetzen darf (siehe FarmPulseBridge.readFieldCrops()).
+-- `field.farmland` ist die von der Engine erzwungene, bestaetigte 1:1-
+-- Zuordnung (`FieldManager.farmlandIdFieldMapping`); `fieldState.farmlandId`
+-- ist ein unbestaetigter Fallback fuer den Fall, dass `field.farmland` fehlt,
+-- und basiert nur auf einem einzelnen abgetasteten Punkt (Feld-Polygon-
+-- Mittelpunkt) - er kann deshalb theoretisch auf dieselbe farmlandId wie ein
+-- anderes, bestaetigt zugeordnetes Feld zeigen. Ohne diese Absicherung koennte
+-- die nicht garantierte Iterationsreihenfolge der Engine-Feldliste
+-- nichtdeterministisch eine bestaetigte Zuordnung mit einem unbestaetigten
+-- Fallback ueberschreiben - eine wahrscheinliche Ursache dafuer, dass die
+-- angezeigte Feldfrucht/der Wachstumsfortschritt eines Feldes nicht mit dem
+-- tatsaechlich dort Angebauten uebereinstimmt.
+-- @param existingIsAuthoritative true, falls fuer diese farmlandId bereits ein
+--        ueber field.farmland bestaetigter Eintrag vorliegt (nil/false, falls
+--        noch kein Eintrag vorliegt oder der vorhandene selbst ein Fallback
+--        ist)
+-- @param newIsAuthoritative true, falls der neue Eintrag ueber field.farmland
+--        bestaetigt ist (false, falls er auf dem fieldState.farmlandId-
+--        Fallback beruht)
+-- @return true, falls der neue Eintrag geschrieben werden darf
+function FieldCollector.shouldReplaceCropEntry(existingIsAuthoritative, newIsAuthoritative)
+    if existingIsAuthoritative and not newIsAuthoritative then
+        return false
+    end
+    return true
+end
+
 --- Normalisiert einen einzelnen rohen Farmland-Datensatz, optional angereichert
 -- um Anbaudaten desselben Feldes.
 -- @param raw Tabelle mit den rohen Feldern id, farmId, areaInHa, price (jeweils

@@ -179,7 +179,7 @@ end
 -- sowie die konfigurierte Monatslaenge aus dem Environment-Objekt der laufenden
 -- Mission.
 --
--- Gegen zwei Quellen bestaetigt (siehe README.md):
+-- Gegen mehrere Quellen bestaetigt (siehe README.md):
 --   - Offizielle GDN-Dokumentation (Klasse AbstractMission): environment.dayTime
 --     ist in Millisekunden seit Mitternacht (Verrechnung mit `24*60*60*1000` in
 --     AbstractMission:getMinutesLeft()), environment.daysPerPeriod ist ein
@@ -188,10 +188,20 @@ end
 --     environment:getDayInPeriodFromDay(currentMonotonicDay) berechnet (ebenfalls
 --     setDefaultEndDate()) - environment.currentMonotonicDay ist dabei der
 --     fortlaufende Tageszaehler seit Spielbeginn, kein Tag-im-Monat.
---   - FS25 AI Coding Reference (XelaNull/FS25_UsedPlus), gegen eine
---     veroeffentlichte Mod (UsedPlus) validiert, mit Datei-/Zeilenbeleg
---     (CreditSystem.lua:223-227): environment.currentMonth und
---     environment.currentYear sind echte, direkte Felder.
+--   - environment.currentYear ist ein echtes, direktes Feld (mehrfach bestaetigt,
+--     siehe README.md).
+--
+-- KORREKTUR (siehe README.md): environment.currentMonth existiert NICHT -
+-- eine fruehere Fassung dieser Bridge nahm das faelschlich an (basierend auf
+-- einer fehlerhaften Quellenzuordnung, siehe README.md fuer Details) und
+-- exportierte dadurch immer 0 als Monat. Bestaetigt (dekompilierter FS25-
+-- Basisspiel-Quellcode, mehrfach unabhaengig durch echten Basisspiel- und
+-- Mod-Code bestaetigt): der Monat wird stattdessen aus
+-- environment.currentPeriod (1..12, FS-interne "Periode" - Periode 1 ist
+-- "frueher Fruehling", auf einer Nordhalbkugel-Karte also Maerz, nicht
+-- Januar) unter Anwendung derselben Hemisphaeren-Verschiebung berechnet, die
+-- die Engine selbst in I18N:formatPeriod() fuer die Monatsanzeige verwendet
+-- (TelemetryCollector.calendarMonthFromPeriod(), siehe dort).
 -- @return hour, minute, day, month, year, daysPerMonth (jeweils number, Rohwerte
 --         vor Normalisierung durch TelemetryCollector)
 function FarmPulseBridge.readCalendar()
@@ -215,9 +225,14 @@ function FarmPulseBridge.readCalendar()
         local currentMonotonicDay = environment.currentMonotonicDay or 0
         day = environment:getDayInPeriodFromDay(currentMonotonicDay) or 0
 
-        -- Bestaetigt (siehe Funktionskommentar, FS25 AI Coding Reference):
-        -- currentMonth/currentYear sind echte, direkte Felder.
-        month = environment.currentMonth or 0
+        -- Bestaetigt (siehe Funktionskommentar, Korrektur): Monat aus
+        -- currentPeriod + Hemisphaeren-Verschiebung berechnen, NICHT ueber
+        -- das nicht existierende currentMonth.
+        local period = environment.currentPeriod or 1
+        local isSouthern = environment.daylight ~= nil
+            and type(environment.daylight.latitude) == "number"
+            and environment.daylight.latitude < 0
+        month = TelemetryCollector.calendarMonthFromPeriod(period, isSouthern)
         year = environment.currentYear or 0
     end)
 
@@ -349,11 +364,18 @@ end
 -- mit demselben Index, da Frucht- und Fuelltyp fuer die Basis-Feldfrucht in
 -- FS ueblicherweise denselben Namen tragen) und laesst fruitType sonst leer
 -- (kein Anbau exportiert), statt einen falschen Namen zu raten.
+--
+-- Gehaertet gegen Kollisionen zwischen der bestaetigten `field.farmland`-
+-- Zuordnung und dem unbestaetigten `fieldState.farmlandId`-Fallback (siehe
+-- FieldCollector.shouldReplaceCropEntry()): eine bestaetigte Zuordnung wird
+-- nie durch einen Fallback-Eintrag ueberschrieben, unabhaengig von der
+-- (nicht garantierten) Iterationsreihenfolge von g_fieldManager.fields.
 -- @return Tabelle, die Farmland-IDs auf rohe {fruitTypeName, growthState,
 --         minHarvestingGrowthState, literPerSqm, isHarvestable, areaHa}
 --         abbildet (leer, falls g_fieldManager nicht verfuegbar ist)
 function FarmPulseBridge.readFieldCrops()
     local raw = {}
+    local isAuthoritativeByFarmlandId = {}
 
     local ok = pcall(function()
         for _, field in pairs(g_fieldManager.fields) do
@@ -369,12 +391,18 @@ function FarmPulseBridge.readFieldCrops()
                 end
 
                 local farmlandId = 0
+                local isAuthoritative = false
                 if field.farmland ~= nil then
                     farmlandId = field.farmland.id or 0
+                    isAuthoritative = true
                 elseif fieldState.farmlandId ~= nil then
                     farmlandId = fieldState.farmlandId
                 end
                 if farmlandId == 0 then
+                    return
+                end
+
+                if not FieldCollector.shouldReplaceCropEntry(isAuthoritativeByFarmlandId[farmlandId], isAuthoritative) then
                     return
                 end
 
@@ -415,6 +443,7 @@ function FarmPulseBridge.readFieldCrops()
                     isHarvestable = isHarvestable,
                     areaHa = areaHa,
                 }
+                isAuthoritativeByFarmlandId[farmlandId] = isAuthoritative
             end)
         end
     end)

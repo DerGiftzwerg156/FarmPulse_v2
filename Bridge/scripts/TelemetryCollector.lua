@@ -69,6 +69,25 @@ function TelemetryCollector.normalizeMinute(rawMinute)
     return minute
 end
 
+--- Berechnet den Kalendermonat (1=Januar..12=Dezember) aus der FS25-internen
+-- "Periode" (environment.currentPeriod, 1..12, saisonbezogen - NICHT direkt
+-- der Kalendermonat: Periode 1 ist "frueher Fruehling", auf einer
+-- Nordhalbkugel-Karte also Maerz statt Januar). Bildet exakt dieselbe
+-- Hemisphaeren-Verschiebung nach, die die Engine selbst in I18N:formatPeriod()
+-- fuer die Monatsanzeige verwendet (siehe Bridge/README.md, Abschnitt
+-- "Kalender"). Es gibt KEIN eigenstaendiges "currentMonth"-Feld in FS25 - eine
+-- fruehere Fassung dieser Bridge nahm das faelschlich an (siehe README.md,
+-- Korrektur-Hinweis).
+-- @param period rohe FS25-Periode (1..12); faellt auf 1 zurueck falls nil
+-- @param isSouthern true, falls die Karte auf der Suedhalbkugel liegt
+--        (environment.daylight.latitude < 0)
+-- @return Kalendermonat 1..12
+function TelemetryCollector.calendarMonthFromPeriod(period, isSouthern)
+    period = period or 1
+    local offset = period + 2 + (isSouthern and 6 or 0)
+    return ((offset - 1) % 12) + 1
+end
+
 --- Normalisiert einen rohen Wettertyp-String auf einen bekannten Wert.
 -- Unbekannte/fehlende Werte werden zu "UNKNOWN" - siehe FarmPulseBridge.readWeather()
 -- fuer die (teils hergeleiteten) Engine-Zugriffe, die diesen Rohwert liefern.

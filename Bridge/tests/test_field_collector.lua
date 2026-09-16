@@ -134,6 +134,27 @@ return function()
         testkit.assertEquals(0, info.estimatedYieldLiters)
     end)
 
+    testkit.run("shouldReplaceCropEntry: kein vorhandener Eintrag erlaubt jeden neuen Eintrag", function()
+        testkit.assertEquals(true, FieldCollector.shouldReplaceCropEntry(nil, true))
+        testkit.assertEquals(true, FieldCollector.shouldReplaceCropEntry(nil, false))
+    end)
+
+    testkit.run("shouldReplaceCropEntry: bestaetigter Eintrag wird nie durch Fallback ersetzt", function()
+        testkit.assertEquals(false, FieldCollector.shouldReplaceCropEntry(true, false))
+    end)
+
+    testkit.run("shouldReplaceCropEntry: bestaetigter Eintrag darf einen weiteren bestaetigten Eintrag ersetzen", function()
+        testkit.assertEquals(true, FieldCollector.shouldReplaceCropEntry(true, true))
+    end)
+
+    testkit.run("shouldReplaceCropEntry: ein bestaetigter Eintrag darf einen vorhandenen Fallback-Eintrag ersetzen", function()
+        testkit.assertEquals(true, FieldCollector.shouldReplaceCropEntry(false, true))
+    end)
+
+    testkit.run("shouldReplaceCropEntry: ein Fallback-Eintrag darf einen vorhandenen Fallback-Eintrag ersetzen", function()
+        testkit.assertEquals(true, FieldCollector.shouldReplaceCropEntry(false, false))
+    end)
+
     testkit.run("buildFields: reichert Felder ueber rawCropsByFieldId mit Anbaudaten an", function()
         local fields = FieldCollector.buildFields(
             {
