@@ -3,7 +3,7 @@
 # IngestIntegrationTest braucht Testcontainers/Docker-in-Docker) - die
 # CI-Pipeline (.github/workflows/test.yml) deckt `mvn test` bereits vollstaendig
 # ab, dieses Image baut nur das bereits getestete Artefakt.
-FROM maven:3.9-eclipse-temurin-21 AS build
+FROM maven:3-eclipse-temurin-26 AS build
 WORKDIR /build
 
 # Abhaengigkeiten zuerst aufloesen, damit dieser (teure) Layer im Docker-Cache
