@@ -15,6 +15,7 @@ import {
 import { MailboxService } from '../../core/services/mailbox.service';
 import { MailboxMessage } from '../../core/models/mailbox.model';
 import { MailboxMessageModalComponent } from '../../shared/components/mailbox-message-modal/mailbox-message-modal.component';
+import { mailboxCategoryIcon, mailboxGameTimeLabel } from '../../core/utils/mailbox-category.util';
 
 interface CategoryFilter {
   label: string;
@@ -86,34 +87,8 @@ export class MailboxComponent {
     });
   });
 
-  categoryIcon(category: string): string {
-    switch (category) {
-      case 'MARKET':
-        return 'banknote';
-      case 'EQUIPMENT':
-        return 'wrench';
-      case 'STAFFING':
-      case 'PAYROLL':
-        return 'users';
-      case 'WEATHER':
-        return 'cloud-rain';
-      case 'AUTHORITY':
-        return 'landmark';
-      case 'BANK':
-        return 'landmark';
-      case 'PRESS':
-        return 'megaphone';
-      default:
-        return 'mail';
-    }
-  }
-
-  gameTimeLabel(message: MailboxMessage): string {
-    const day = String(message.gameDay).padStart(2, '0');
-    const hour = String(message.gameHour).padStart(2, '0');
-    const minute = String(message.gameMinute).padStart(2, '0');
-    return `Tag ${day}, ${hour}:${minute}`;
-  }
+  protected readonly categoryIcon = mailboxCategoryIcon;
+  protected readonly gameTimeLabel = mailboxGameTimeLabel;
 
   selectCategory(value: string | null): void {
     this.activeCategory.set(value);
