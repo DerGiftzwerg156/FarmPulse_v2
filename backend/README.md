@@ -2,8 +2,8 @@
 
 Spring-Boot-Anwendung, die die von der [FarmPulse Bridge](../Bridge/) exportierten
 Austauschdateien (`telemetry.json`, `world.json`, `farm.json`) periodisch einliest,
-in sinnvolle Entitaeten verpackt und in MariaDB historisiert. Eine
-Dashboard-Oberflaeche ist (noch) nicht Teil dieser Anwendung - siehe Root-`README.md`.
+in sinnvolle Entitaeten verpackt und in MariaDB historisiert. Die dazugehoerige
+Angular-Oberflaeche liegt unter [`../frontend/`](../frontend/).
 
 ## Architektur
 
@@ -27,6 +27,10 @@ backend/
     ├── savegame/                            REST-Schnittstelle rund um den Start eines Savegames (siehe unten)
     │   ├── SavegameController.java          GET/POST /api/savegame
     │   ├── SavegameService.java             Statuslogik + einmalige Vorgeschichte-Eingabe
+    │   └── dto/
+    ├── dashboard/                           REST-Schnittstelle fuer die Dashboard-Landingpage (siehe unten)
+    │   ├── DashboardController.java         GET /api/dashboard, GET /api/dashboard/history
+    │   ├── DashboardService.java            Aggregiert Farm/Telemetrie/Welt zum aktuellen Zustand
     │   └── dto/
     ├── domain/                              JPA-Entitaeten
     └── repository/                          Spring-Data-Repositories
@@ -76,6 +80,22 @@ zugeordnet werden koennen (siehe "Bekannte Einschraenkung" unten), kann die Vorg
 bereits vorher eingegeben werden: `SavegameBackstory.farm` ist dafuer nullable und wird
 nachtraeglich verknuepft, sobald `TelemetryIngestService` eine neue Farm anlegt (via
 `FarmCreatedEvent`, `SavegameService.onFarmCreated`).
+
+### Dashboard (`dashboard/`)
+
+`DashboardController` stellt die Daten fuer die Angular-Landingpage (`frontend/`,
+Route `/dashboard`) bereit - ausschliesslich Werte, die tatsaechlich aus den
+Austauschdateien stammen (siehe `backend/docs/MOCK_DASHBOARD_DATENLUECKEN.md` fuer
+Mock-Datenpunkte ohne aktuelle Bridge-Quelle):
+
+- `GET /api/dashboard` - aggregierter Zustand der aktiven Farm: Stammdaten, aktuelle
+  Spielzeit, Kontostand, Fuhrparkwert, die der Farm gehoerenden Felder
+  (`FieldSnapshot.ownerFarmId == Farm.id`), alle Lagerbestaende mit Fuellgrad sowie
+  einfache, aus diesen Werten abgeleitete Warnungen (negativer Kontostand, Lager
+  ueber 90% voll). Liefert `404 Not Found`, solange noch keine Farm/Telemetrie
+  vorliegt (siehe `savegame/` oben).
+- `GET /api/dashboard/history?limit=` - die letzten `limit` (Default 20, max. 200)
+  Kontostand-Werte in chronologischer Reihenfolge, fuer die Sparkline im Dashboard.
 
 ### Bekannte Einschraenkung: eine aktive Farm pro Instanz
 
