@@ -7,5 +7,9 @@ package de.farmpulse.backend.ingest.dto;
 public record StorageData(
         String fillType,
         long amount,
-        long capacity) {
+        long capacity,
+        Double currentPricePer1000L,
+        Double bestPricePer1000L,
+        Integer bestPricePeriod,
+        String bestPricePeriodLabel) {
 }

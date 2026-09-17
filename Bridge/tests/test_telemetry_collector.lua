@@ -32,6 +32,30 @@ return function()
         testkit.assertEquals(59, TelemetryCollector.normalizeMinute(-1))
     end)
 
+    testkit.run("calendarMonthFromPeriod: Periode 1 auf Nordhalbkugel ist Maerz", function()
+        testkit.assertEquals(3, TelemetryCollector.calendarMonthFromPeriod(1, false))
+    end)
+
+    testkit.run("calendarMonthFromPeriod: Periode 1 auf Suedhalbkugel ist September", function()
+        testkit.assertEquals(9, TelemetryCollector.calendarMonthFromPeriod(1, true))
+    end)
+
+    testkit.run("calendarMonthFromPeriod: Periode 11 auf Nordhalbkugel wraps auf Januar", function()
+        testkit.assertEquals(1, TelemetryCollector.calendarMonthFromPeriod(11, false))
+    end)
+
+    testkit.run("calendarMonthFromPeriod: Periode 12 auf Nordhalbkugel ist Februar", function()
+        testkit.assertEquals(2, TelemetryCollector.calendarMonthFromPeriod(12, false))
+    end)
+
+    testkit.run("calendarMonthFromPeriod: fehlende Periode faellt auf 1 (Maerz, Nordhalbkugel) zurueck", function()
+        testkit.assertEquals(3, TelemetryCollector.calendarMonthFromPeriod(nil, false))
+    end)
+
+    testkit.run("calendarMonthFromPeriod: fehlende Hemisphaere wird als Nordhalbkugel behandelt", function()
+        testkit.assertEquals(3, TelemetryCollector.calendarMonthFromPeriod(1, nil))
+    end)
+
     testkit.run("buildPayload: normalisiert alle Felder", function()
         local payload = TelemetryCollector.buildPayload({
             hour = 8,
@@ -42,6 +66,8 @@ return function()
             daysPerMonth = 3,
             money = 84250,
             farmId = 1,
+            weatherType = "RAIN",
+            temperature = 11.4,
         })
         testkit.assertEquals(8, payload.hour)
         testkit.assertEquals(30, payload.minute)
@@ -51,6 +77,8 @@ return function()
         testkit.assertEquals(3, payload.daysPerMonth)
         testkit.assertEquals(84250, payload.money)
         testkit.assertEquals(1, payload.farmId)
+        testkit.assertEquals("RAIN", payload.weatherType)
+        testkit.assertEquals(11.4, payload.temperature)
     end)
 
     testkit.run("buildPayload: erlaubt negativen Kontostand", function()
@@ -58,10 +86,22 @@ return function()
         testkit.assertEquals(-500, payload.money)
     end)
 
+    testkit.run("buildPayload: erlaubt negative Temperatur", function()
+        local payload = TelemetryCollector.buildPayload({ temperature = -4.5 })
+        testkit.assertEquals(-4.5, payload.temperature)
+    end)
+
+    testkit.run("buildPayload: unbekannter/fehlender Wettertyp wird zu UNKNOWN", function()
+        testkit.assertEquals("UNKNOWN", TelemetryCollector.buildPayload({}).weatherType)
+        testkit.assertEquals("UNKNOWN", TelemetryCollector.buildPayload({ weatherType = "TORNADO" }).weatherType)
+    end)
+
     testkit.run("buildPayload: fehlender rawState wird wie leere Tabelle behandelt", function()
         local payload = TelemetryCollector.buildPayload(nil)
         testkit.assertEquals(0, payload.hour)
         testkit.assertEquals(0, payload.money)
+        testkit.assertEquals("UNKNOWN", payload.weatherType)
+        testkit.assertEquals(0, payload.temperature)
     end)
 
     testkit.run("toJson: liefert das erwartete Format", function()
@@ -74,9 +114,12 @@ return function()
             daysPerMonth = 3,
             money = 84250,
             farmId = 1,
+            weatherType = "SUN",
+            temperature = 11.4,
         })
         testkit.assertEquals(
-            '{"hour":8,"minute":30,"day":4,"month":6,"year":2,"daysPerMonth":3,"money":84250,"farmId":1}',
+            '{"hour":8,"minute":30,"day":4,"month":6,"year":2,"daysPerMonth":3,"money":84250,"farmId":1,'
+                .. '"weatherType":"SUN","temperature":11.40}',
             TelemetryCollector.toJson(payload)
         )
     end)

@@ -56,6 +56,9 @@ year=1
 days_per_month=3
 money=50000
 farm_id=1
+weather_type="SUN"
+temperature=15
+WEATHER_TYPES=("SUN" "PARTIALLY_CLOUDY" "CLOUDY" "RAIN" "SNOW")
 
 # --- Welt-Zustand (siehe FieldCollector/VehicleCollector/StorageCollector) ---
 fleet_value=125000
@@ -63,6 +66,31 @@ wheat_amount=5000
 wheat_capacity=20000
 barley_amount=1200
 barley_capacity=20000
+
+# --- Marktpreise je Lagerbestand (siehe PriceCollector.lua) ---
+# HINWEIS: die echte Bridge zaehlt FS25-"Perioden" (1-12), die je nach
+# Kartenbreitengrad NICHT mit Kalendermonaten uebereinstimmen (siehe
+# Bridge/README.md). Dieser Mock vereinfacht das bewusst und nutzt den
+# simulierten Kalendermonat direkt als "beste Periode"-Label.
+MONTH_NAMES=("Januar" "Februar" "März" "April" "Mai" "Juni" "Juli" "August" "September" "Oktober" "November" "Dezember")
+wheat_price_per_1000l=218.40
+wheat_best_price_per_1000l=218.40
+wheat_best_price_period=${month}
+barley_price_per_1000l=175.20
+barley_best_price_per_1000l=175.20
+barley_best_price_period=${month}
+
+# --- Anbaudaten je eigenem Feld (siehe FieldCollector.computeCropInfo()) ---
+# growth_pct laeuft 0..100 (Prozent von growthState) und startet nach dem
+# "erntereif"-Punkt wieder bei 0 (simulierte Wiederaussaat).
+field1_fruit="WHEAT"
+field1_area_ha=4.53
+field1_liter_per_sqm=0.35
+field1_growth_pct=10
+field2_fruit="BARLEY"
+field2_area_ha=6.1
+field2_liter_per_sqm=0.30
+field2_growth_pct=55
 
 # --- Betriebs-/Spieleridentitaet (siehe FarmCollector.lua), einmalig ---
 farm_name="Sonnenhof"
@@ -72,16 +100,24 @@ write_telemetry() {
     local tmp_file="${TELEMETRY_FILE}.tmp"
 
     cat > "${tmp_file}" <<JSON
-{"hour":${hour},"minute":${minute},"day":${day},"month":${month},"year":${year},"daysPerMonth":${days_per_month},"money":${money},"farmId":${farm_id}}
+{"hour":${hour},"minute":${minute},"day":${day},"month":${month},"year":${year},"daysPerMonth":${days_per_month},"money":${money},"farmId":${farm_id},"weatherType":"${weather_type}","temperature":${temperature}}
 JSON
     mv "${tmp_file}" "${TELEMETRY_FILE}"
 }
 
 write_world() {
     local tmp_file="${WORLD_FILE}.tmp"
+    # growthState/estimatedYieldLiters als Dezimalzahlen - Bash rechnet nur
+    # mit Ganzzahlen, daher hier per awk berechnet (siehe
+    # FieldCollector.computeCropInfo() fuer dieselbe Formel in Lua).
+    local field1_growth field1_yield field2_growth field2_yield
+    field1_growth=$(awk "BEGIN { printf \"%.2f\", ${field1_growth_pct} / 100 }")
+    field1_yield=$(awk "BEGIN { printf \"%.1f\", ${field1_liter_per_sqm} * ${field1_area_ha} * 10000 * ${field1_growth_pct} / 100 }")
+    field2_growth=$(awk "BEGIN { printf \"%.2f\", ${field2_growth_pct} / 100 }")
+    field2_yield=$(awk "BEGIN { printf \"%.1f\", ${field2_liter_per_sqm} * ${field2_area_ha} * 10000 * ${field2_growth_pct} / 100 }")
 
     cat > "${tmp_file}" <<JSON
-{"fleetValue":${fleet_value},"fields":[{"fieldId":1,"ownerFarmId":${farm_id},"sizeHa":4.53,"price":32000},{"fieldId":2,"ownerFarmId":${farm_id},"sizeHa":6.1,"price":45000},{"fieldId":3,"ownerFarmId":0,"sizeHa":3.2,"price":28000}],"storages":[{"fillType":"BARLEY","amount":${barley_amount},"capacity":${barley_capacity}},{"fillType":"WHEAT","amount":${wheat_amount},"capacity":${wheat_capacity}}]}
+{"fleetValue":${fleet_value},"fields":[{"fieldId":1,"ownerFarmId":${farm_id},"sizeHa":${field1_area_ha},"price":32000,"fruitType":"${field1_fruit}","growthState":${field1_growth},"estimatedYieldLiters":${field1_yield}},{"fieldId":2,"ownerFarmId":${farm_id},"sizeHa":${field2_area_ha},"price":45000,"fruitType":"${field2_fruit}","growthState":${field2_growth},"estimatedYieldLiters":${field2_yield}},{"fieldId":3,"ownerFarmId":0,"sizeHa":3.2,"price":28000,"fruitType":null,"growthState":null,"estimatedYieldLiters":null}],"storages":[{"fillType":"BARLEY","amount":${barley_amount},"capacity":${barley_capacity},"currentPricePer1000L":${barley_price_per_1000l},"bestPricePer1000L":${barley_best_price_per_1000l},"bestPricePeriod":${barley_best_price_period},"bestPricePeriodLabel":"${MONTH_NAMES[$((barley_best_price_period - 1))]}"},{"fillType":"WHEAT","amount":${wheat_amount},"capacity":${wheat_capacity},"currentPricePer1000L":${wheat_price_per_1000l},"bestPricePer1000L":${wheat_best_price_per_1000l},"bestPricePeriod":${wheat_best_price_period},"bestPricePeriodLabel":"${MONTH_NAMES[$((wheat_best_price_period - 1))]}"}]}
 JSON
     mv "${tmp_file}" "${WORLD_FILE}"
 }
@@ -139,12 +175,38 @@ while true; do
         barley_amount=0
     fi
 
+    # Marktpreise leicht schwanken lassen und den bisher besten Preis samt
+    # Periode (hier: simulierter Kalendermonat) fortschreiben (siehe
+    # PriceCollector.findBestPrice() fuer dieselbe Logik auf Bridge-Seite).
+    wheat_price_per_1000l=$(awk "BEGIN { p = ${wheat_price_per_1000l} + (${RANDOM} % 21 - 10) / 10; if (p < 0) p = 0; printf \"%.2f\", p }")
+    if awk "BEGIN { exit !(${wheat_price_per_1000l} > ${wheat_best_price_per_1000l}) }"; then
+        wheat_best_price_per_1000l="${wheat_price_per_1000l}"
+        wheat_best_price_period=${month}
+    fi
+    barley_price_per_1000l=$(awk "BEGIN { p = ${barley_price_per_1000l} + (${RANDOM} % 21 - 10) / 10; if (p < 0) p = 0; printf \"%.2f\", p }")
+    if awk "BEGIN { exit !(${barley_price_per_1000l} > ${barley_best_price_per_1000l}) }"; then
+        barley_best_price_per_1000l="${barley_price_per_1000l}"
+        barley_best_price_period=${month}
+    fi
+
+    # Wachstum der beiden simulierten Felder voranschreiten lassen; nach
+    # Erreichen von 100% (erntereif) wieder bei 0 beginnen (Wiederaussaat).
+    field1_growth_pct=$(((field1_growth_pct + 1) % 101))
+    field2_growth_pct=$(((field2_growth_pct + 1) % 101))
+
+    # Wetter/Temperatur ebenfalls leicht schwanken lassen (kein echtes
+    # Wettermodell - nur zu Demo-/Testzwecken, analog zu Kontostand/Lager oben).
+    temperature=$((temperature + (RANDOM % 3) - 1))
+    if [ "$((RANDOM % 5))" -eq 0 ]; then
+        weather_type="${WEATHER_TYPES[$((RANDOM % ${#WEATHER_TYPES[@]}))]}"
+    fi
+
     write_telemetry
     if [ "$((tick % WORLD_TICK_RATIO))" -eq 0 ]; then
         write_world
     fi
 
-    echo "[mock-bridge] Jahr ${year}, Tag ${day}/${days_per_month} (Monat ${month}), $(printf '%02d:%02d' "${hour}" "${minute}"), Kontostand ${money} EUR"
+    echo "[mock-bridge] Jahr ${year}, Tag ${day}/${days_per_month} (Monat ${month}), $(printf '%02d:%02d' "${hour}" "${minute}"), Kontostand ${money} EUR, ${weather_type} ${temperature}°C"
 
     tick=$((tick + 1))
     sleep "${INTERVAL_SECONDS}"

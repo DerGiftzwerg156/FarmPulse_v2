@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="no"?>
 <modDesc descVersion="93">
     <author>FarmPulse Project</author>
-    <version>2.1.0</version>
+    <version>2.2.1</version>
 
     <title>
         <de>FarmPulse Bridge</de>
@@ -9,8 +9,8 @@
     </title>
 
     <description>
-        <de><![CDATA[FarmPulse Bridge verbindet deinen laufenden Betrieb mit der FarmPulse-Core-Anwendung. Die Bridge exportiert drei getrennte Dateien: telemetry.json (alle paar Sekunden - Uhrzeit, Spieltag, Monat, Jahr, Tage je Monat, Kontostand, FarmID), world.json (seltener - alle Felder der Karte, aggregierter Fuhrpark-Wert, Lager-/Silobestaende) und farm.json (einmalig - Hofname, Spielername). Das FarmPulse-Dashboard zeigt diese Werte live an.]]></de>
-        <en><![CDATA[FarmPulse Bridge connects your running farm to the FarmPulse Core application. The bridge exports three separate files: telemetry.json (every few seconds - time of day, in-game day, month, year, days per month, account balance, FarmID), world.json (less often - every field on the map, aggregated fleet value, storage/silo contents) and farm.json (once - farm name, player name). The FarmPulse dashboard displays these values live.]]></en>
+        <de><![CDATA[FarmPulse Bridge verbindet deinen laufenden Betrieb mit der FarmPulse-Core-Anwendung. Die Bridge exportiert drei getrennte Dateien: telemetry.json (alle paar Sekunden - Uhrzeit, Spieltag, Monat, Jahr, Tage je Monat, Kontostand, FarmID, aktuelles Wetter), world.json (seltener - alle Felder der Karte inkl. Anbaudaten und Ertragsschaetzung, aggregierter Fuhrpark-Wert, Lager-/Silobestaende inkl. aktuellem und bestem Marktpreis) und farm.json (einmalig - Hofname, Spielername). Das FarmPulse-Dashboard zeigt diese Werte live an.]]></de>
+        <en><![CDATA[FarmPulse Bridge connects your running farm to the FarmPulse Core application. The bridge exports three separate files: telemetry.json (every few seconds - time of day, in-game day, month, year, days per month, account balance, FarmID, current weather), world.json (less often - every field on the map incl. crop data and yield estimate, aggregated fleet value, storage/silo contents incl. current and best market price) and farm.json (once - farm name, player name). The FarmPulse dashboard displays these values live.]]></en>
     </description>
 
     <multiplayer supported="false" />
@@ -24,6 +24,7 @@
         <sourceFile filename="scripts/FieldCollector.lua" />
         <sourceFile filename="scripts/VehicleCollector.lua" />
         <sourceFile filename="scripts/StorageCollector.lua" />
+        <sourceFile filename="scripts/PriceCollector.lua" />
         <sourceFile filename="scripts/FarmCollector.lua" />
         <sourceFile filename="scripts/WorldCollector.lua" />
         <sourceFile filename="scripts/TelemetryCollector.lua" />

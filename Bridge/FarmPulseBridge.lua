@@ -7,10 +7,14 @@
     nach Aenderungsfrequenz, statt eines einzigen monolithischen Schnappschusses:
 
         - telemetry.json (alle POLL_INTERVAL_MS, schnelle "Puls"-Werte):
-          Uhrzeit, Spieltag/Monat/Jahr/Tage je Monat, Kontostand, FarmID
+          Uhrzeit, Spieltag/Monat/Jahr/Tage je Monat, Kontostand, FarmID,
+          aktueller Wettertyp + Temperatur
         - world.json (alle WORLD_POLL_INTERVAL_MS, seltener - "was mir gehoert"):
-          Feld-/Farmland-Informationen fuer ALLE Farmlands der Karte, aggregierter
-          Fuhrpark-Wert, Lager-/Silobestaende
+          Feld-/Farmland-Informationen fuer ALLE Farmlands der Karte (inkl.
+          optionaler Anbaudaten: Fruchtart, Wachstumsfortschritt,
+          Ertragsschaetzung), aggregierter Fuhrpark-Wert, Lager-/Silobestaende
+          (inkl. aktuellem Marktpreis sowie bestem Preis + Periode der
+          letzten 12 FS25-Perioden je Fill-Typ)
         - farm.json (einmalig bei Aktivierung, aendert sich praktisch nie):
           Hofname, Spielername
 
@@ -21,12 +25,16 @@
     gehalten; die eigentliche Verarbeitungs-/Serialisierungslogik steckt in den
     testbaren, GIANTS-unabhaengigen Modulen unter scripts/ (JsonEncoder,
     PollTimer, FieldCollector, VehicleCollector, StorageCollector,
-    FarmCollector, WorldCollector, TelemetryCollector).
+    PriceCollector, FarmCollector, WorldCollector, TelemetryCollector).
 
     Bewusst NICHT exportiert (siehe README.md fuer die Begruendung je Kategorie):
     Fahrzeugzustand (Tank/Verschleiss - beobachtet der Spieler selbst im Spiel),
-    Tiere, Anbaudaten je Feld, Vertraege/Missionen, Kredite/Schulden (uebernimmt
-    Core komplett), Verlauf/Historie (uebernimmt das Spiel selbst).
+    Tiere, Vertraege/Missionen, Kredite/Schulden (uebernimmt Core komplett),
+    Verlauf/Historie (uebernimmt das Spiel selbst). Anbaudaten je Feld
+    (Fruchtart/Wachstum/Ertragsschaetzung) waren urspruenglich ebenfalls
+    bewusst ausgeschlossen ("bei fields geht es nur um Besitz, nicht um
+    Bewirtschaftung") - diese Entscheidung wurde fuer die Ertragsprognose im
+    Frontend revidiert, siehe readFieldCrops().
 
     ACHTUNG - unbestaetigtes Kategorie-C-Wissen: Die konkreten FS25-Engine-Aufrufe
     unten (welches Objekt haelt den Kontostand, in welcher Einheit liegt die
@@ -67,6 +75,7 @@ source(modDirectory .. "scripts/PollTimer.lua")
 source(modDirectory .. "scripts/FieldCollector.lua")
 source(modDirectory .. "scripts/VehicleCollector.lua")
 source(modDirectory .. "scripts/StorageCollector.lua")
+source(modDirectory .. "scripts/PriceCollector.lua")
 source(modDirectory .. "scripts/FarmCollector.lua")
 source(modDirectory .. "scripts/WorldCollector.lua")
 source(modDirectory .. "scripts/TelemetryCollector.lua")
@@ -170,7 +179,7 @@ end
 -- sowie die konfigurierte Monatslaenge aus dem Environment-Objekt der laufenden
 -- Mission.
 --
--- Gegen zwei Quellen bestaetigt (siehe README.md):
+-- Gegen mehrere Quellen bestaetigt (siehe README.md):
 --   - Offizielle GDN-Dokumentation (Klasse AbstractMission): environment.dayTime
 --     ist in Millisekunden seit Mitternacht (Verrechnung mit `24*60*60*1000` in
 --     AbstractMission:getMinutesLeft()), environment.daysPerPeriod ist ein
@@ -179,10 +188,20 @@ end
 --     environment:getDayInPeriodFromDay(currentMonotonicDay) berechnet (ebenfalls
 --     setDefaultEndDate()) - environment.currentMonotonicDay ist dabei der
 --     fortlaufende Tageszaehler seit Spielbeginn, kein Tag-im-Monat.
---   - FS25 AI Coding Reference (XelaNull/FS25_UsedPlus), gegen eine
---     veroeffentlichte Mod (UsedPlus) validiert, mit Datei-/Zeilenbeleg
---     (CreditSystem.lua:223-227): environment.currentMonth und
---     environment.currentYear sind echte, direkte Felder.
+--   - environment.currentYear ist ein echtes, direktes Feld (mehrfach bestaetigt,
+--     siehe README.md).
+--
+-- KORREKTUR (siehe README.md): environment.currentMonth existiert NICHT -
+-- eine fruehere Fassung dieser Bridge nahm das faelschlich an (basierend auf
+-- einer fehlerhaften Quellenzuordnung, siehe README.md fuer Details) und
+-- exportierte dadurch immer 0 als Monat. Bestaetigt (dekompilierter FS25-
+-- Basisspiel-Quellcode, mehrfach unabhaengig durch echten Basisspiel- und
+-- Mod-Code bestaetigt): der Monat wird stattdessen aus
+-- environment.currentPeriod (1..12, FS-interne "Periode" - Periode 1 ist
+-- "frueher Fruehling", auf einer Nordhalbkugel-Karte also Maerz, nicht
+-- Januar) unter Anwendung derselben Hemisphaeren-Verschiebung berechnet, die
+-- die Engine selbst in I18N:formatPeriod() fuer die Monatsanzeige verwendet
+-- (TelemetryCollector.calendarMonthFromPeriod(), siehe dort).
 -- @return hour, minute, day, month, year, daysPerMonth (jeweils number, Rohwerte
 --         vor Normalisierung durch TelemetryCollector)
 function FarmPulseBridge.readCalendar()
@@ -206,9 +225,14 @@ function FarmPulseBridge.readCalendar()
         local currentMonotonicDay = environment.currentMonotonicDay or 0
         day = environment:getDayInPeriodFromDay(currentMonotonicDay) or 0
 
-        -- Bestaetigt (siehe Funktionskommentar, FS25 AI Coding Reference):
-        -- currentMonth/currentYear sind echte, direkte Felder.
-        month = environment.currentMonth or 0
+        -- Bestaetigt (siehe Funktionskommentar, Korrektur): Monat aus
+        -- currentPeriod + Hemisphaeren-Verschiebung berechnen, NICHT ueber
+        -- das nicht existierende currentMonth.
+        local period = environment.currentPeriod or 1
+        local isSouthern = environment.daylight ~= nil
+            and type(environment.daylight.latitude) == "number"
+            and environment.daylight.latitude < 0
+        month = TelemetryCollector.calendarMonthFromPeriod(period, isSouthern)
         year = environment.currentYear or 0
     end)
 
@@ -217,6 +241,73 @@ function FarmPulseBridge.readCalendar()
     end
 
     return hour, minute, day, month, year, daysPerMonth
+end
+
+--- Liest den aktuellen Wettertyp und die Umgebungstemperatur.
+--
+-- Temperatur ist BESTAETIGT (siehe README.md): drei echte, veroeffentlichte
+-- Mods (u.a. FS25_RealisticWeather) lesen an dieser Stelle
+-- environment.weather:getCurrentTemperature() fuer denselben Zweck (u.a. die
+-- Aussentemperatur-Anzeige im Fahrzeug-Cockpit).
+--
+-- Wettertyp Strategie 1 ist HERGELEITET, nicht bestaetigt (siehe README.md):
+-- GIANTS haelt Weather.lua/Environment.lua sowohl aus dem SDK-Dump als auch
+-- aus der offiziellen LUADOC zurueck. Die Aufrufkette (forecast:dataForTime,
+-- getWeatherObjectByIndex, WeatherType.getName) taucht zwar in echtem,
+-- veroeffentlichtem Mod-Code auf (der die Basisspiel-Wetteranzeige
+-- nachbaut), die Klassendefinition selbst liegt aber nicht offen.
+-- Strategie 2 (Fallback) nutzt ausschliesslich BESTAETIGTE Methoden
+-- (getIsRaining/getIsSnowing/getIsHailing, ebenfalls in echtem Basisspiel-Code
+-- referenziert), liefert dafuer nur eine grobe Naeherung ohne "bewoelkt".
+-- @return weatherType (string, roh - Normalisierung siehe TelemetryCollector),
+--         temperature (number)
+function FarmPulseBridge.readWeather()
+    local mission = getMission()
+    local temperature = 0
+    local weatherType = nil
+
+    local tempOk, tempResult = pcall(function()
+        return mission.environment.weather:getCurrentTemperature()
+    end)
+    if tempOk and type(tempResult) == "number" then
+        temperature = tempResult
+    else
+        FarmPulseBridge.log("WARNUNG: Konnte Temperatur nicht lesen - exportiere 0.")
+    end
+
+    -- Strategie 1 (hergeleitet, siehe Funktionskommentar).
+    local typeOk, typeResult = pcall(function()
+        local weather = mission.environment.weather
+        local _, currentWeather = weather.forecast:dataForTime(mission.environment.currentMonotonicDay,
+            mission.environment.dayTime)
+        local weatherObject = weather:getWeatherObjectByIndex(currentWeather.season, currentWeather.objectIndex)
+        return WeatherType.getName(weatherObject.weatherType)
+    end)
+    if typeOk and type(typeResult) == "string" then
+        weatherType = typeResult
+    else
+        -- Strategie 2 (Fallback, bestaetigte Einzelmethoden - siehe Funktionskommentar).
+        local fallbackOk, fallbackResult = pcall(function()
+            local weather = mission.environment.weather
+            if weather:getIsHailing() then
+                return "HAIL"
+            end
+            if weather:getIsSnowing() then
+                return "SNOW"
+            end
+            if weather:getIsRaining() then
+                return "RAIN"
+            end
+            return "SUN"
+        end)
+        if fallbackOk and type(fallbackResult) == "string" then
+            weatherType = fallbackResult
+        else
+            FarmPulseBridge.log("WARNUNG: Konnte Wettertyp ueber keine bekannte API lesen - exportiere UNKNOWN.")
+        end
+    end
+
+    return weatherType, temperature
 end
 
 --- Liest die rohe Liste aller Farmlands ("Felder" im Sinne dieser Bridge) ueber
@@ -251,6 +342,114 @@ function FarmPulseBridge.readFarmlands()
 
     if not ok then
         FarmPulseBridge.log("WARNUNG: Konnte Farmland-/Feldliste nicht ueber g_farmlandManager lesen - exportiere leere fields-Liste.")
+        return {}
+    end
+
+    return raw
+end
+
+--- Liest je Feld (g_fieldManager, NICHT dasselbe wie die Farmlands aus
+-- readFarmlands()) rohe Anbau-/Ertragswerte, indiziert nach Farmland-ID, damit
+-- FieldCollector.buildFields() sie den world.json-Feldern zuordnen kann.
+--
+-- HERGELEITET, nicht vollstaendig bestaetigt (siehe README.md, Tabelle):
+-- g_fieldManager.fields, field:getFieldState(), FieldState.fruitTypeIndex/
+-- .growthState/.isValid sowie g_fruitTypeManager:getFruitTypeByIndex() mit
+-- .literPerSqm/.minHarvestingGrowthState/:getIsHarvestable() sind gegen die
+-- offizielle GDN-Dokumentation UND echte FS25-Basisspiel-Skripte bestaetigt.
+-- NICHT bestaetigt ist, wie sich zum rohen fruitTypeIndex ein lesbarer Name
+-- auflösen laesst - diese Bridge probiert dafuer zwei unbestaetigte
+-- Strategien (FruitType.getName(), analog zum bestaetigten
+-- WeatherType.getName()-Muster; sonst g_fillTypeManager:getFillTypeNameByIndex()
+-- mit demselben Index, da Frucht- und Fuelltyp fuer die Basis-Feldfrucht in
+-- FS ueblicherweise denselben Namen tragen) und laesst fruitType sonst leer
+-- (kein Anbau exportiert), statt einen falschen Namen zu raten.
+--
+-- Gehaertet gegen Kollisionen zwischen der bestaetigten `field.farmland`-
+-- Zuordnung und dem unbestaetigten `fieldState.farmlandId`-Fallback (siehe
+-- FieldCollector.shouldReplaceCropEntry()): eine bestaetigte Zuordnung wird
+-- nie durch einen Fallback-Eintrag ueberschrieben, unabhaengig von der
+-- (nicht garantierten) Iterationsreihenfolge von g_fieldManager.fields.
+-- @return Tabelle, die Farmland-IDs auf rohe {fruitTypeName, growthState,
+--         minHarvestingGrowthState, literPerSqm, isHarvestable, areaHa}
+--         abbildet (leer, falls g_fieldManager nicht verfuegbar ist)
+function FarmPulseBridge.readFieldCrops()
+    local raw = {}
+    local isAuthoritativeByFarmlandId = {}
+
+    local ok = pcall(function()
+        for _, field in pairs(g_fieldManager.fields) do
+            -- Einzelne fehlgeschlagene/unbestellte Felder ueberspringen, statt
+            -- die gesamte Liste zu verwerfen.
+            pcall(function()
+                local fieldState = field:getFieldState()
+                if fieldState == nil or not fieldState.isValid then
+                    return
+                end
+                if fieldState.fruitTypeIndex == nil or fieldState.fruitTypeIndex == FruitType.UNKNOWN then
+                    return
+                end
+
+                local farmlandId = 0
+                local isAuthoritative = false
+                if field.farmland ~= nil then
+                    farmlandId = field.farmland.id or 0
+                    isAuthoritative = true
+                elseif fieldState.farmlandId ~= nil then
+                    farmlandId = fieldState.farmlandId
+                end
+                if farmlandId == 0 then
+                    return
+                end
+
+                if not FieldCollector.shouldReplaceCropEntry(isAuthoritativeByFarmlandId[farmlandId], isAuthoritative) then
+                    return
+                end
+
+                local fruitTypeName = nil
+                pcall(function() fruitTypeName = FruitType.getName(fieldState.fruitTypeIndex) end)
+                if fruitTypeName == nil then
+                    pcall(function()
+                        fruitTypeName = g_fillTypeManager:getFillTypeNameByIndex(fieldState.fruitTypeIndex)
+                    end)
+                end
+
+                local desc = g_fruitTypeManager:getFruitTypeByIndex(fieldState.fruitTypeIndex)
+                local literPerSqm = 0
+                local minHarvestingGrowthState = 0
+                local isHarvestable = false
+                if desc ~= nil then
+                    literPerSqm = desc.literPerSqm or 0
+                    minHarvestingGrowthState = desc.minHarvestingGrowthState or 0
+                    local harvestOk, harvestResult = pcall(function()
+                        return desc:getIsHarvestable(fieldState.growthState)
+                    end)
+                    if harvestOk then
+                        isHarvestable = harvestResult
+                    end
+                end
+
+                local areaHa = 0
+                local areaOk, areaResult = pcall(function() return field:getAreaHa() end)
+                if areaOk and type(areaResult) == "number" then
+                    areaHa = areaResult
+                end
+
+                raw[farmlandId] = {
+                    fruitTypeName = fruitTypeName,
+                    growthState = fieldState.growthState or 0,
+                    minHarvestingGrowthState = minHarvestingGrowthState,
+                    literPerSqm = literPerSqm,
+                    isHarvestable = isHarvestable,
+                    areaHa = areaHa,
+                }
+                isAuthoritativeByFarmlandId[farmlandId] = isAuthoritative
+            end)
+        end
+    end)
+
+    if not ok then
+        FarmPulseBridge.log("WARNUNG: Konnte Feld-Anbaudaten nicht ueber g_fieldManager lesen - exportiere keine Anbaudaten.")
         return {}
     end
 
@@ -379,6 +578,83 @@ function FarmPulseBridge.readStorages(farmId)
     return raw
 end
 
+--- Liest den rohen aktuellen Marktpreis sowie die rohe 12-Perioden-
+-- Preishistorie eines Fill-Typs (fuer "currentPricePer1000L"/"bestPricePer1000L"
+-- eines Lagerbestands, siehe PriceCollector).
+--
+-- BESTAETIGT (siehe README.md, Abschnitt "Marktpreise"): gegen ein
+-- dekompiliertes FS25-Basisspiel-Quellskript (EconomyManager.lua,
+-- FillTypeDesc.lua) sowie gegen mehrere veroeffentlichte FS25-Mods geprueft,
+-- die exakt dieselbe Signatur in Produktionscode aufrufen (u.a.
+-- FS25_ForestryHelper, VDTelemetry). g_currentMission.economyManager:
+-- getPricePerLiter(fillTypeIndex) liefert den aktuellen Preis in Euro je
+-- Liter (globaler Marktpreis, nicht je Verkaufsstelle).
+-- fillType.economy.history ist eine 12-eintraege-Tabelle (Index 1..12, eine
+-- FS25-"Periode" je Eintrag, NICHT zwingend Kalendermonate - siehe
+-- formatPricePeriod()) mit historischen Preisen in Euro je Liter, aus der
+-- PriceCollector.findBestPrice() den hoechsten Wert samt Periode ermittelt.
+-- @param fillTypeName Fill-Typ-Name wie von readStorages() geliefert (z.B. "WHEAT")
+-- @return currentPricePerLiter (number oder nil), history (Tabelle mit bis zu
+--         12 Eintraegen, Index 1..12, oder nil - jeweils nil, falls der
+--         Zugriff fehlschlaegt)
+function FarmPulseBridge.readFillTypePrice(fillTypeName)
+    local currentPricePerLiter, history
+
+    local ok = pcall(function()
+        local fillType = g_fillTypeManager:getFillTypeByName(fillTypeName)
+        if fillType == nil then
+            return
+        end
+
+        currentPricePerLiter = g_currentMission.economyManager:getPricePerLiter(fillType.index)
+
+        if type(fillType.economy) == "table" and type(fillType.economy.history) == "table" then
+            history = {}
+            for period = 1, 12 do
+                history[period] = fillType.economy.history[period]
+            end
+        end
+    end)
+
+    if not ok then
+        FarmPulseBridge.log("WARNUNG: Konnte Marktpreis fuer '" .. tostring(fillTypeName)
+            .. "' nicht ueber g_currentMission.economyManager lesen.")
+        return nil, nil
+    end
+
+    return currentPricePerLiter, history
+end
+
+--- Loest eine FS25-Preis-"Periode" (1..12, siehe readFillTypePrice()) zu einem
+-- menschenlesbaren, spiel-lokalisierten Monatsnamen auf.
+--
+-- BESTAETIGT (siehe README.md, Abschnitt "Marktpreise"): g_i18n:formatPeriod()
+-- ist dieselbe Funktion, die die Preis-Statistik-Ansicht des Basisspiels fuer
+-- die Monatsbeschriftung nutzt. Periode 1 ist auf der Nordhalbkugel-Standard-
+-- karte NICHT Januar, sondern Maerz (Verschiebung um den Kartenbreitengrad je
+-- nach Hemisphaere) - die Zuordnung Periode->Monat wird deshalb bewusst NICHT
+-- selbst nachgebaut, sondern ueber die Engine-Funktion aufgeloest.
+-- @param period 1..12 oder nil
+-- @return lokalisierter Monatsname (string) oder nil, falls period nil ist
+--         oder der Zugriff fehlschlaegt
+function FarmPulseBridge.formatPricePeriod(period)
+    if period == nil then
+        return nil
+    end
+
+    local label
+    local ok = pcall(function()
+        label = g_i18n:formatPeriod(period)
+    end)
+
+    if not ok or type(label) ~= "string" then
+        FarmPulseBridge.log("WARNUNG: Konnte Periode " .. tostring(period) .. " nicht ueber g_i18n:formatPeriod lesen.")
+        return nil
+    end
+
+    return label
+end
+
 --- Baut die aktuelle Telemetrie-Nutzlast und schreibt sie als telemetry.json in
 -- den Austauschordner. Schnelle "Puls"-Werte, siehe FarmPulseBridge.POLL_INTERVAL_MS.
 function FarmPulseBridge.exportTelemetry()
@@ -389,6 +665,7 @@ function FarmPulseBridge.exportTelemetry()
     local hour, minute, day, month, year, daysPerMonth = FarmPulseBridge.readCalendar()
     local money = FarmPulseBridge.readMoney()
     local farmId = FarmPulseBridge.readFarmId()
+    local weatherType, temperature = FarmPulseBridge.readWeather()
 
     local payload = TelemetryCollector.buildPayload({
         hour = hour,
@@ -399,6 +676,8 @@ function FarmPulseBridge.exportTelemetry()
         daysPerMonth = daysPerMonth,
         money = money,
         farmId = farmId,
+        weatherType = weatherType,
+        temperature = temperature,
     })
 
     FarmPulseBridge.writeJsonFile(FarmPulseBridge.TELEMETRY_FILENAME, TelemetryCollector.toJson(payload))
@@ -414,13 +693,22 @@ function FarmPulseBridge.exportWorld()
 
     local farmId = FarmPulseBridge.readFarmId()
     local rawFarmlands = FarmPulseBridge.readFarmlands()
+    local rawFieldCrops = FarmPulseBridge.readFieldCrops()
     local rawVehiclePrices = FarmPulseBridge.readVehiclePrices(farmId)
     local rawStorages = FarmPulseBridge.readStorages(farmId)
 
+    local storages = StorageCollector.buildStorages(rawStorages)
+    for i, storage in ipairs(storages) do
+        local rawCurrentPrice, rawHistory = FarmPulseBridge.readFillTypePrice(storage.fillType)
+        local _, bestPricePeriod = PriceCollector.findBestPrice(rawHistory)
+        local bestPricePeriodLabel = FarmPulseBridge.formatPricePeriod(bestPricePeriod)
+        storages[i] = PriceCollector.withPrice(storage, rawCurrentPrice, rawHistory, bestPricePeriodLabel)
+    end
+
     local payload = WorldCollector.buildPayload({
-        fields = FieldCollector.buildFields(rawFarmlands),
+        fields = FieldCollector.buildFields(rawFarmlands, rawFieldCrops),
         fleetValue = VehicleCollector.buildFleetValue(rawVehiclePrices),
-        storages = StorageCollector.buildStorages(rawStorages),
+        storages = storages,
     })
 
     FarmPulseBridge.writeJsonFile(FarmPulseBridge.WORLD_FILENAME, WorldCollector.toJson(payload))

@@ -66,4 +66,114 @@ return function()
         testkit.assertEquals(5, fields[2].fieldId)
         testkit.assertEquals(9, fields[3].fieldId)
     end)
+
+    testkit.run("normalizeField: ohne cropRaw sind Anbaufelder nil", function()
+        local field = FieldCollector.normalizeField({ id = 1, areaInHa = 1 })
+        testkit.assertEquals(nil, field.fruitType)
+        testkit.assertEquals(nil, field.growthState)
+        testkit.assertEquals(nil, field.estimatedYieldLiters)
+    end)
+
+    testkit.run("computeCropInfo: nil-cropRaw liefert nil", function()
+        testkit.assertEquals(nil, FieldCollector.computeCropInfo(nil))
+    end)
+
+    testkit.run("computeCropInfo: cropRaw ohne fruitTypeName liefert nil (kein Anbau)", function()
+        testkit.assertEquals(nil, FieldCollector.computeCropInfo({ growthState = 3 }))
+    end)
+
+    testkit.run("computeCropInfo: waehrend des Wachstums liegt growthState zwischen 0 und 1", function()
+        local info = FieldCollector.computeCropInfo({
+            fruitTypeName = "WHEAT",
+            growthState = 3,
+            minHarvestingGrowthState = 6,
+            literPerSqm = 0.7,
+            isHarvestable = false,
+            areaHa = 1,
+        })
+        testkit.assertEquals("WHEAT", info.fruitType)
+        testkit.assertNear(0.5, info.growthState, 1e-9)
+        -- areaSqm=10000, literPerSqm=0.7 -> 7000 bei voller Reife, hier zur Haelfte
+        testkit.assertNear(3500, info.estimatedYieldLiters, 1e-6)
+    end)
+
+    testkit.run("computeCropInfo: erntereif liefert growthState 1 unabhaengig vom rohen Wert", function()
+        local info = FieldCollector.computeCropInfo({
+            fruitTypeName = "BARLEY",
+            growthState = 4,
+            minHarvestingGrowthState = 6,
+            literPerSqm = 0.6,
+            isHarvestable = true,
+            areaHa = 2,
+        })
+        testkit.assertEquals(1, info.growthState)
+        testkit.assertNear(12000, info.estimatedYieldLiters, 1e-6)
+    end)
+
+    testkit.run("computeCropInfo: growthState wird auf [0,1] begrenzt (kein minHarvestingGrowthState-Ueberlauf)", function()
+        local info = FieldCollector.computeCropInfo({
+            fruitTypeName = "WHEAT",
+            growthState = 20,
+            minHarvestingGrowthState = 6,
+            literPerSqm = 1,
+            isHarvestable = false,
+            areaHa = 1,
+        })
+        testkit.assertEquals(1, info.growthState)
+    end)
+
+    testkit.run("computeCropInfo: fehlendes minHarvestingGrowthState liefert growthState 0", function()
+        local info = FieldCollector.computeCropInfo({
+            fruitTypeName = "WHEAT",
+            growthState = 3,
+            literPerSqm = 1,
+            isHarvestable = false,
+            areaHa = 1,
+        })
+        testkit.assertEquals(0, info.growthState)
+        testkit.assertEquals(0, info.estimatedYieldLiters)
+    end)
+
+    testkit.run("shouldReplaceCropEntry: kein vorhandener Eintrag erlaubt jeden neuen Eintrag", function()
+        testkit.assertEquals(true, FieldCollector.shouldReplaceCropEntry(nil, true))
+        testkit.assertEquals(true, FieldCollector.shouldReplaceCropEntry(nil, false))
+    end)
+
+    testkit.run("shouldReplaceCropEntry: bestaetigter Eintrag wird nie durch Fallback ersetzt", function()
+        testkit.assertEquals(false, FieldCollector.shouldReplaceCropEntry(true, false))
+    end)
+
+    testkit.run("shouldReplaceCropEntry: bestaetigter Eintrag darf einen weiteren bestaetigten Eintrag ersetzen", function()
+        testkit.assertEquals(true, FieldCollector.shouldReplaceCropEntry(true, true))
+    end)
+
+    testkit.run("shouldReplaceCropEntry: ein bestaetigter Eintrag darf einen vorhandenen Fallback-Eintrag ersetzen", function()
+        testkit.assertEquals(true, FieldCollector.shouldReplaceCropEntry(false, true))
+    end)
+
+    testkit.run("shouldReplaceCropEntry: ein Fallback-Eintrag darf einen vorhandenen Fallback-Eintrag ersetzen", function()
+        testkit.assertEquals(true, FieldCollector.shouldReplaceCropEntry(false, false))
+    end)
+
+    testkit.run("buildFields: reichert Felder ueber rawCropsByFieldId mit Anbaudaten an", function()
+        local fields = FieldCollector.buildFields(
+            {
+                { id = 1, farmId = 1, areaInHa = 1, price = 1000 },
+                { id = 2, farmId = 1, areaInHa = 1, price = 1000 },
+            },
+            {
+                [1] = {
+                    fruitTypeName = "WHEAT",
+                    growthState = 6,
+                    minHarvestingGrowthState = 6,
+                    literPerSqm = 0.7,
+                    isHarvestable = true,
+                    areaHa = 1,
+                },
+            }
+        )
+        testkit.assertEquals("WHEAT", fields[1].fruitType)
+        testkit.assertEquals(1, fields[1].growthState)
+        testkit.assertEquals(nil, fields[2].fruitType)
+    end)
 end

@@ -44,6 +44,19 @@ Bitte vor dem Oeffnen eines PRs der Reihe nach durchgehen:
    `backend/src/main/resources/db/migration/` - niemals eine bestehende
    Migration nachtraeglich aendern.
 
+   Fuer Aenderungen unter `frontend/`:
+
+   ```bash
+   cd frontend
+   npm ci        # nur beim ersten Mal bzw. nach package.json-Aenderungen
+   npm run build
+   npm test -- --watch=false --browsers=ChromeHeadlessCI
+   ```
+
+   `ng test` benoetigt einen Headless-Chrome-Launcher; siehe
+   `frontend/karma.conf.js` fuer die vorkonfigurierte `ChromeHeadlessCI`-
+   Umgebung, falls lokal kein Chrome/Chromium gefunden wird.
+
 2. **Neue Logik testen.** Aenderungen an einem GIANTS-unabhaengigen Modul
    unter `Bridge/scripts/` (also allem ausser `FarmPulseBridge.lua` selbst)
    brauchen passende Tests in `Bridge/tests/`. Reine Engine-Glue-Aenderungen
@@ -61,17 +74,39 @@ Bitte vor dem Oeffnen eines PRs der Reihe nach durchgehen:
    `Bridge/modDesc.xml` unter `<extraSourceFiles>` eingetragen werden, sonst
    laedt FS25 sie nicht.
 
-5. **`mock-bridge.sh` bei Formataenderungen anpassen.** Aendert sich das
-   JSON-Format der Austauschdateien, `Tools/mock-bridge.sh` entsprechend
-   nachziehen, damit das Mock weiterhin ein realistisches Abbild der echten
-   Bridge liefert.
+5. **`mock-bridge.sh` bei JEDER Formataenderung anpassen - kein optionaler
+   Schritt.** Aendert sich das JSON-Format der Austauschdateien
+   (`telemetry.json`/`world.json`/`farm.json`), muss `Tools/mock-bridge.sh`
+   im selben PR entsprechend nachgezogen werden, damit das Mock weiterhin
+   ein realistisches Abbild der echten Bridge liefert. Das gilt unabhaengig
+   davon, in welchem Bereich die Aenderung eingecheckt wird - z.B. auch,
+   wenn nur das Backend ein neues Bridge-Feld erstmals konsumiert, das
+   `mock-bridge.sh` aber noch nicht schreibt. Ein veraltetes Mock faellt
+   sonst erst spaet auf (z.B. beim naechsten Frontend-Test gegen `npm start`
+   + `mock-bridge.sh`) und blockiert dann alle nachgelagerten
+   Entwickler:innen.
 
-6. **Diff selbst noch einmal durchsehen** (`git diff`/`git status`): keine
+6. **Neue Mock-Dashboard-Werte ohne echte Datenquelle dokumentieren.** Zeigt
+   ein Mock unter `MockDashboard/*.html` einen Wert, fuer den die Bridge
+   (noch) keine Daten liefert, wird dafuer **kein** erfundener
+   Platzhalterwert angezeigt - stattdessen den Wert in
+   `backend/docs/MOCK_DASHBOARD_DATENLUECKEN.md` als Datenluecke eintragen
+   (mit einer Einschaetzung, wie er sich ggf. nachziehen liesse).
+
+7. **Neue Frontend-Seiten einbinden.** Eine neue Seite braucht einen Eintrag
+   in `frontend/src/app/app.routes.ts` sowie einen aktiven Sidebar-Punkt in
+   `frontend/src/app/layout/shell/shell.component.html` (statt eines
+   dauerhaft ausgegrauten Platzhalters) und sollte wie die uebrigen Seiten
+   alle 5 Sekunden gegen das Backend pollen (siehe das
+   `merge(timer(0, 5000), manualRefresh$)`-Pattern in
+   `core/services/dashboard.service.ts` als Vorlage).
+
+8. **Diff selbst noch einmal durchsehen** (`git diff`/`git status`): keine
    versehentlich eingecheckten lokalen Dateien (IDE-Konfiguration,
-   `mock-exchange/`-Ausgaben, Log-Dateien etc.) und keine Secrets/Zugangsdaten
-   im Diff.
+   `mock-exchange/`-Ausgaben, `frontend/dist/`, `frontend/node_modules/`,
+   Log-Dateien etc.) und keine Secrets/Zugangsdaten im Diff.
 
-7. **PR-Beschreibung ausfuellen** (siehe PR-Vorlage): was wurde geaendert,
+9. **PR-Beschreibung ausfuellen** (siehe PR-Vorlage): was wurde geaendert,
    warum, und wie wurde es getestet (Testlauf-Ausgabe genuegt fuer
    `scripts/`-Aenderungen; bei Engine-Glue-Aenderungen der In-Game-Testablauf
    aus `Bridge/README.md`, Abschnitt "Test-Feedback-Loop").
@@ -79,9 +114,13 @@ Bitte vor dem Oeffnen eines PRs der Reihe nach durchgehen:
 ## CI
 
 Jeder Pull Request laeuft automatisch durch die GitHub-Actions-Pipeline
-(`.github/workflows/test.yml`), die `Bridge/tests/run_tests.lua` ausfuehrt.
-Ein PR mit fehlschlagender Pipeline wird nicht gemergt - im Zweifel lieber
-vorher lokal wie in Schritt 1 oben pruefen.
+(`.github/workflows/test.yml`), die die Bridge-Lua-Tests
+(`lua5.4 tests/run_tests.lua`) sowie die Backend-Tests (`mvn test`, inkl.
+Testcontainers-Integrationstests gegen MariaDB, und einen Docker-Image-Build)
+ausfuehrt. **Frontend-Tests laufen aktuell NICHT in CI** - `ng build`/`ng test`
+muessen vor einem PR, der `frontend/` betrifft, lokal ausgefuehrt werden
+(siehe Schritt 1 oben). Ein PR mit fehlschlagender Pipeline wird nicht
+gemergt - im Zweifel lieber vorher lokal wie in Schritt 1 oben pruefen.
 
 ## Architektur-Grundsatz
 

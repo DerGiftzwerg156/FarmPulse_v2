@@ -17,6 +17,12 @@ import jakarta.persistence.Table;
  * <p>{@code ownerFarmId} ist bewusst KEIN Fremdschluessel auf {@link Farm}:
  * Die Bridge liefert alle Felder der Karte, auch unbesitzte (0) und solche
  * anderer, hier nicht separat verfolgter Farmen.
+ *
+ * <p>{@code fruitType}/{@code growthState}/{@code estimatedYieldLiters} sind
+ * nullable: die Bridge liefert sie nur, wenn ein Feld-Objekt zum jeweiligen
+ * Farmland gefunden und die Fruchtart aufgeloest werden konnte (siehe
+ * Bridge/README.md, Abschnitt "Dateiformat: world.json" sowie "Bekannte
+ * Luecken" fuer die Konfidenz dieser Werte).
  */
 @Entity
 @Table(name = "field_snapshot")
@@ -42,15 +48,28 @@ public class FieldSnapshot {
     @Column(name = "price", nullable = false)
     private long price;
 
+    @Column(name = "fruit_type", nullable = true, length = 64)
+    private String fruitType;
+
+    @Column(name = "growth_state", nullable = true)
+    private Double growthState;
+
+    @Column(name = "estimated_yield_liters", nullable = true)
+    private Double estimatedYieldLiters;
+
     protected FieldSnapshot() {
         // fuer JPA
     }
 
-    public FieldSnapshot(int fieldId, int ownerFarmId, double sizeHa, long price) {
+    public FieldSnapshot(int fieldId, int ownerFarmId, double sizeHa, long price, String fruitType,
+            Double growthState, Double estimatedYieldLiters) {
         this.fieldId = fieldId;
         this.ownerFarmId = ownerFarmId;
         this.sizeHa = sizeHa;
         this.price = price;
+        this.fruitType = fruitType;
+        this.growthState = growthState;
+        this.estimatedYieldLiters = estimatedYieldLiters;
     }
 
     void setWorldSnapshot(WorldSnapshot worldSnapshot) {
@@ -79,5 +98,17 @@ public class FieldSnapshot {
 
     public long getPrice() {
         return price;
+    }
+
+    public String getFruitType() {
+        return fruitType;
+    }
+
+    public Double getGrowthState() {
+        return growthState;
+    }
+
+    public Double getEstimatedYieldLiters() {
+        return estimatedYieldLiters;
     }
 }

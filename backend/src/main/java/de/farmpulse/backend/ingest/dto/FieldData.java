@@ -8,5 +8,8 @@ public record FieldData(
         int fieldId,
         int ownerFarmId,
         double sizeHa,
-        long price) {
+        long price,
+        String fruitType,
+        Double growthState,
+        Double estimatedYieldLiters) {
 }

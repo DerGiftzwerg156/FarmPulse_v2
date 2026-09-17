@@ -13,5 +13,7 @@ public record TelemetryData(
         int year,
         int daysPerMonth,
         long money,
-        long farmId) {
+        long farmId,
+        String weatherType,
+        double temperature) {
 }

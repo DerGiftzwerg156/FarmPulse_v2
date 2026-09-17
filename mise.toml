@@ -1,6 +1,7 @@
 [tools]
 lua = "5.4"
 java = "21"
+node = "22"
 
 [tasks.test]
 description = "Bridge Lua-Unit-Tests ausfuehren"
@@ -28,3 +29,18 @@ run = "docker compose -f Tools/docker-compose.dev.yml up -d"
 [tasks."docker-dev-backend"]
 description = "Dev-MariaDB + Backend containerisiert starten (Docker, baut das Backend-Image)"
 run = "docker compose -f Tools/docker-compose.dev.yml --profile backend up -d --build"
+
+[tasks."frontend-build"]
+description = "Frontend produktiv bauen (ng build)"
+dir = "frontend"
+run = "npm run build"
+
+[tasks."frontend-test"]
+description = "Frontend-Unit-Tests ausfuehren (Karma/Headless Chrome)"
+dir = "frontend"
+run = "npm test -- --watch=false --browsers=ChromeHeadlessCI"
+
+[tasks."frontend-run"]
+description = "Frontend-Dev-Server starten (erwartet das Backend auf localhost:8080)"
+dir = "frontend"
+run = "npm start"

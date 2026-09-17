@@ -1,0 +1,58 @@
+[
+  {
+    "sender": "Buchhaltung",
+    "category": "MARKET",
+    "priority": "HIGH",
+    "subject": "Marktbericht: Weizenpreis fällt um 27 %",
+    "body": "Ein ungewöhnlich nasser Herbst in den großen Anbauregionen Osteuropas drückt die Weizenpreise deutlich. Optionen: Sofort verkaufen oder Abwarten auf Erholung."
+  },
+  {
+    "sender": "Markus Bauer (Anruf)",
+    "category": "EQUIPMENT",
+    "priority": "HIGH",
+    "subject": "Mähdrescher macht Geräusche",
+    "body": "Chef, der Mähdrescher macht Geräusche, die mir nicht gefallen. Ich würde ihn gern vor der restlichen Ernte durchchecken lassen. Das kostet etwa 1–2 Stunden Stillstand."
+  },
+  {
+    "sender": "Stellenmarkt",
+    "category": "STAFFING",
+    "priority": "MEDIUM",
+    "subject": "Neue Kandidatin: Sara Klein, Tierpflegerin",
+    "body": "Eine erfahrene Tierpflegerin aus der Region sucht eine neue Stelle. Bei Interesse kann ein Vorstellungsgespräch vereinbart werden."
+  },
+  {
+    "sender": "Lohnbuchhaltung",
+    "category": "PAYROLL",
+    "priority": "MEDIUM",
+    "subject": "Gehaltsabrechnung – Vorschau",
+    "body": "Die Vorschau der nächsten Gehaltsabrechnung steht bereit. Bitte prüfen, ob alle Angaben korrekt sind."
+  },
+  {
+    "sender": "Wetterdienst",
+    "category": "WEATHER",
+    "priority": "HIGH",
+    "subject": "Unwetterwarnung für die kommenden Tage",
+    "body": "Für die kommenden Tage wird lokal Starkregen mit möglichem Hagel erwartet. Ernte- und Feldarbeiten gegebenenfalls vorziehen."
+  },
+  {
+    "sender": "Behörde Landwirtschaft",
+    "category": "AUTHORITY",
+    "priority": "LOW",
+    "subject": "Neue Düngeauflage ab kommender Saison",
+    "body": "Ab der kommenden Saison gelten überarbeitete Vorgaben zur Ausbringung von Mineraldünger. Die vollständigen Regelungen folgen in einem separaten Schreiben."
+  },
+  {
+    "sender": "Volksbank",
+    "category": "BANK",
+    "priority": "LOW",
+    "subject": "Angebot: Erweiterte Kreditlinie",
+    "body": "Basierend auf der aktuellen Bonität bieten wir eine erweiterte Kreditlinie zu günstigen Konditionen an. Bei Interesse einfach melden."
+  },
+  {
+    "sender": "Lokalzeitung",
+    "category": "PRESS",
+    "priority": "MEDIUM",
+    "subject": "Interview-Anfrage: Nachhaltige Landwirtschaft",
+    "body": "Wir planen eine Reportage über nachhaltige Landwirtschaft in der Region und würden uns über ein kurzes Interview freuen."
+  }
+]

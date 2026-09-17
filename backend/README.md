@@ -2,8 +2,8 @@
 
 Spring-Boot-Anwendung, die die von der [FarmPulse Bridge](../Bridge/) exportierten
 Austauschdateien (`telemetry.json`, `world.json`, `farm.json`) periodisch einliest,
-in sinnvolle Entitaeten verpackt und in MariaDB historisiert. Eine
-Dashboard-Oberflaeche ist (noch) nicht Teil dieser Anwendung - siehe Root-`README.md`.
+in sinnvolle Entitaeten verpackt und in MariaDB historisiert. Die dazugehoerige
+Angular-Oberflaeche liegt unter [`../frontend/`](../frontend/).
 
 ## Architektur
 
@@ -28,12 +28,36 @@ backend/
     │   ├── SavegameController.java          GET/POST /api/savegame
     │   ├── SavegameService.java             Statuslogik + einmalige Vorgeschichte-Eingabe
     │   └── dto/
+    ├── dashboard/                           REST-Schnittstelle fuer die Dashboard-Landingpage (siehe unten)
+    │   ├── DashboardController.java         GET /api/dashboard, GET /api/dashboard/history
+    │   ├── DashboardService.java            Aggregiert Farm/Telemetrie/Welt zum aktuellen Zustand
+    │   └── dto/
+    ├── fields/                              REST-Schnittstelle fuer die Felder-Seite (siehe unten)
+    │   ├── FieldsController.java            GET /api/fields
+    │   ├── FieldsService.java               Eigene Felder samt Anbaudaten + Zusammenfassung
+    │   └── dto/
+    ├── finance/                              REST-Schnittstelle fuer die Finanzen-Seite (siehe unten)
+    │   ├── FinanceController.java           GET /api/finance
+    │   ├── FinanceService.java              Kontostand-Verlauf + Einnahmen/Ausgaben aus Telemetrie-Deltas
+    │   └── dto/
+    ├── mailbox/                             Postfach/Farm-Mailbox (siehe unten)
+    │   ├── MailboxController.java           GET /api/mailbox, POST /api/mailbox/{id}/read
+    │   ├── MailboxService.java              Liest Nachrichten der aktiven Farm
+    │   ├── MailboxGenerationService.java    Erzeugt periodisch neue Nachrichten aus Mock-Vorlagen
+    │   └── dto/
+    ├── progression/                          Werte (Reputation/Mitarbeiterzufriedenheit) + Saisonziel (siehe unten)
+    │   ├── ProgressionController.java       GET /api/progression
+    │   ├── ProgressionService.java          Legt Platzhalterwerte je Farm einmalig an, liest sie danach unveraendert
+    │   ├── SeasonGoalTemplate.java           Record fuer season-goal-templates.json
+    │   └── dto/
     ├── domain/                              JPA-Entitaeten
     └── repository/                          Spring-Data-Repositories
 └── src/main/resources/
     ├── application.yml
     ├── application-docker.yml            Ueberschreibt DB-Host/Austauschordner fuer den Container-Betrieb
-    └── db/migration/                        Flyway-Migrationen (V1-V6)
+    ├── mailbox/mailbox-templates.json     Mock-Nachrichtenvorlagen fuer MailboxGenerationService
+    ├── progression/season-goal-templates.json  Mock-Saisonzielvorlagen fuer ProgressionService
+    └── db/migration/                        Flyway-Migrationen (V1-V11)
 ```
 
 ### Ingest-Pipeline
@@ -77,6 +101,93 @@ bereits vorher eingegeben werden: `SavegameBackstory.farm` ist dafuer nullable u
 nachtraeglich verknuepft, sobald `TelemetryIngestService` eine neue Farm anlegt (via
 `FarmCreatedEvent`, `SavegameService.onFarmCreated`).
 
+### Dashboard (`dashboard/`)
+
+`DashboardController` stellt die Daten fuer die Angular-Landingpage (`frontend/`,
+Route `/dashboard`) bereit - ausschliesslich Werte, die tatsaechlich aus den
+Austauschdateien stammen (siehe `backend/docs/MOCK_DASHBOARD_DATENLUECKEN.md` fuer
+Mock-Datenpunkte ohne aktuelle Bridge-Quelle):
+
+- `GET /api/dashboard` - aggregierter Zustand der aktiven Farm: Stammdaten, aktuelle
+  Spielzeit, Wetter (Typ + Temperatur), Kontostand, Fuhrparkwert, die der Farm
+  gehoerenden Felder (`FieldSnapshot.ownerFarmId == Farm.id`), alle Lagerbestaende mit
+  Fuellgrad sowie aktuellem/bestem Marktpreis je Fill-Typ (angezeigt auf der eigenen
+  `/storage`-Seite im Frontend, nicht mehr auf dem Dashboard selbst) sowie einfache,
+  aus diesen Werten abgeleitete Warnungen (aktuell nur
+  negativer Kontostand - die fruehere "Lager fast voll"-Warnung wurde entfernt, der
+  Fuellgrad ist stattdessen direkt auf der Lagerbestaende-Seite sichtbar). Liefert
+  `404 Not Found`, solange noch keine Farm/Telemetrie vorliegt (siehe `savegame/` oben).
+- `GET /api/dashboard/history?limit=` - die letzten `limit` (Default 20, max. 200)
+  Kontostand-Werte in chronologischer Reihenfolge, fuer die Sparkline im Dashboard.
+
+### Felder (`fields/`)
+
+`FieldsController` stellt die Feld-Telemetrie fuer die Angular-Seite `/fields`
+(Vorlage `MockDashboard/Fields.html`) bereit:
+
+- `GET /api/fields` - alle der aktiven Farm gehoerenden Felder
+  (`FieldSnapshot.ownerFarmId == Farm.id`) samt Anbaudaten (Fruchtart,
+  Wachstumsstand 0..1, geschaetzte Erntemenge in Litern - `null`, wenn das Feld
+  aktuell keine Frucht traegt) sowie einer Zusammenfassung (Anzahl, Gesamtflaeche,
+  Gesamtwert, geschaetzter Gesamtertrag). Liefert `404 Not Found` ohne aktive Farm,
+  eine leere Zusammenfassung ohne `world.json`-Snapshot.
+
+### Finanzen (`finance/`)
+
+`FinanceController` stellt Kontostand-Verlauf sowie Einnahmen/Ausgaben fuer die
+Angular-Seite `/finance` (Vorlage `MockDashboard/Finances.html`) bereit:
+
+- `GET /api/finance?limit=` - aktueller Kontostand, Kontostand-Delta sowie
+  Einnahmen/Ausgaben ueber die letzten `limit` (Default 20, max. 200)
+  `TelemetrySnapshot`s: Summe aller positiven Kontostand-Deltas zwischen
+  aufeinanderfolgenden Snapshots = Einnahmen, Summe aller negativen Deltas =
+  Ausgaben. Die Bridge liefert keine Einzeltransaktionen, daher sind das
+  **aggregierte Naeherungswerte** aus der Kontostand-Historie, keine benannten
+  Buchungen (siehe `backend/docs/MOCK_DASHBOARD_DATENLUECKEN.md`).
+
+### Postfach / Farm-Mailbox (`mailbox/`)
+
+`MailboxController` stellt die Nachrichten der aktiven Farm bereit:
+
+- `GET /api/mailbox` - alle Nachrichten der aktiven Farm, neueste zuerst.
+- `POST /api/mailbox/{id}/read` - markiert eine Nachricht als gelesen
+  (`404 Not Found`, falls die ID nicht existiert).
+
+Die Nachrichten selbst werden periodisch von `MailboxGenerationService`
+erzeugt - aktuell **ohne** echte KI-Anbindung: Es wird zufaellig eine
+statische Beispielvorlage aus `mailbox-templates.json`
+(`src/main/resources/mailbox/`) ausgewaehlt. Die Stelle, an der spaeter
+generierter statt vorlagenbasierter Inhalt eingesetzt werden soll, ist in
+`MailboxGenerationService.selectTemplate()` explizit mit
+`TODO(KI-Integration)` markiert. Frontend: Dashboard-Vorschau der letzten 5
+Nachrichten sowie eine eigene `/mailbox`-Seite (Vorlage
+`MockDashboard/Postfach.html`) mit Suche/Filtern; beide oeffnen Nachrichten
+in einem Modal.
+
+### Werte + Saisonziel (`progression/`)
+
+`ProgressionController` stellt die "Werte"- und "Saisonziel"-Panels der
+Angular-Seite `/finance` (Vorlage `MockDashboard/Finances.html`) bereit:
+
+- `GET /api/progression` - Reputation/Mitarbeiterzufriedenheit (je 0-100%)
+  sowie das aktuelle Saisonziel der aktiven Farm.
+
+Beide Konzepte stammen **nicht** aus der Bridge - FS25 kennt weder
+Reputation/Mitarbeiterzufriedenheit noch Saisonziele. `ProgressionService`
+legt beim ersten Aufruf je Farm einmalig Platzhalterwerte an (neutrale 50%
+fuer die Werte, ein zufaellig aus `season-goal-templates.json`
+(`src/main/resources/progression/`) gewaehltes Saisonziel mit
+`currentValue = 0`) und liest sie danach unveraendert aus der Datenbank -
+analog zum Postfach-Vorlagen-Muster (siehe `MailboxGenerationService`
+oben). Die eigentliche Berechnungslogik (wie Reputation/
+Mitarbeiterzufriedenheit sich veraendern, wie der Fortschritt eines
+Saisonziels aus dem tatsaechlichen Farm-Zustand ermittelt wird) ist bewusst
+noch nicht implementiert (siehe `backend/docs/MOCK_DASHBOARD_DATENLUECKEN.md`).
+Ein Saisonziel ist typisiert (`SeasonGoalType`:
+`MONEY_BALANCE`/`HARVEST_AMOUNT`/`EMPLOYEE_COUNT`/`CUSTOM`), damit eine
+spaetere Fortschrittsberechnung weiss, welche Farm-Kennzahl sie
+heranziehen muss.
+
 ### Bekannte Einschraenkung: eine aktive Farm pro Instanz
 
 `world.json` und `farm.json` enthalten selbst keine FarmID (nur `telemetry.json`, siehe
@@ -93,10 +204,13 @@ fuer den Erweiterungsprozess).
 | Tabelle | Inhalt |
 |---|---|
 | `farm` | Ein Betrieb, ID = FarmID aus `telemetry.json`. Name/Spielername aus `farm.json`. |
-| `telemetry_snapshot` | Eine Zeile je tatsaechlich geaendertem `telemetry.json`-Poll (Kontostand, Spielzeit/-kalender). |
+| `telemetry_snapshot` | Eine Zeile je tatsaechlich geaendertem `telemetry.json`-Poll (Kontostand, Spielzeit/-kalender, Wetter-Typ + Temperatur). |
 | `world_snapshot` | Eine Zeile je tatsaechlich geaendertem `world.json`-Poll (Fuhrpark-Wert). |
-| `field_snapshot` | Volle Feldliste je `world_snapshot` (kein Delta, siehe Bridge-Format). |
-| `storage_snapshot` | Volle Lagerbestandsliste je `world_snapshot`. |
+| `field_snapshot` | Volle Feldliste je `world_snapshot` (kein Delta, siehe Bridge-Format). Zusaetzlich zu Groesse/Preis optional Fruchtart, Wachstumsstand (0..1) und geschaetzte Erntemenge in Litern, sofern das Feld aktuell eine Frucht traegt. |
+| `storage_snapshot` | Volle Lagerbestandsliste je `world_snapshot`. Zusaetzlich zu Fuellgrad optional aktueller Marktpreis sowie bester Preis + Periode je Fill-Typ (nullable, siehe Bridge/README.md, Abschnitt "Marktpreise"). |
+| `mailbox_message` | Eine Zeile je generierter Postfach-Nachricht (siehe "Postfach / Farm-Mailbox" oben). |
+| `farm_values` | Genau eine Zeile je Farm: Reputation/Mitarbeiterzufriedenheit (je 0-100%, siehe "Werte + Saisonziel" oben). `farm_id` ist zugleich Primaerschluessel. |
+| `season_goal` | Eine Zeile je (aktuellem oder vergangenem) Saisonziel einer Farm; hoechstens eines je Farm mit `status = ACTIVE` (siehe "Werte + Saisonziel" oben). |
 | `savegame_backstory` | Die einmalig eingegebene "Vorgeschichte" eines Savegames (siehe "Savegame-Start" oben). Hoechstens eine Zeile; `farm_id` nullable, solange die Farm noch nicht bekannt ist. |
 
 Schema-Aenderungen erfolgen ausschliesslich ueber neue Flyway-Migrationen unter

@@ -57,8 +57,31 @@ return function()
         local payload = WorldCollector.buildPayload({ fields = fields, storages = storages, fleetValue = 100 })
         testkit.assertEquals(
             '{"fleetValue":100,'
-                .. '"fields":[{"fieldId":1,"ownerFarmId":0,"sizeHa":4.53,"price":32000}],'
-                .. '"storages":[{"fillType":"WHEAT","amount":5000,"capacity":20000}]}',
+                .. '"fields":[{"fieldId":1,"ownerFarmId":0,"sizeHa":4.53,"price":32000,'
+                .. '"fruitType":null,"growthState":null,"estimatedYieldLiters":null}],'
+                .. '"storages":[{"fillType":"WHEAT","amount":5000,"capacity":20000,'
+                .. '"currentPricePer1000L":null,"bestPricePer1000L":null,'
+                .. '"bestPricePeriod":null,"bestPricePeriodLabel":null}]}',
+            WorldCollector.toJson(payload)
+        )
+    end)
+
+    testkit.run("toJson: serialisiert Marktpreisfelder eines Lagerbestands", function()
+        local storages = { {
+            fillType = "WHEAT",
+            amount = 9500,
+            capacity = 10000,
+            currentPricePer1000L = 218.4,
+            bestPricePer1000L = 254.1,
+            bestPricePeriod = 3,
+            bestPricePeriodLabel = "März",
+        } }
+        local payload = WorldCollector.buildPayload({ storages = storages, fleetValue = 0 })
+        testkit.assertEquals(
+            '{"fleetValue":0,"fields":[],'
+                .. '"storages":[{"fillType":"WHEAT","amount":9500,"capacity":10000,'
+                .. '"currentPricePer1000L":218.40,"bestPricePer1000L":254.10,'
+                .. '"bestPricePeriod":3,"bestPricePeriodLabel":"März"}]}',
             WorldCollector.toJson(payload)
         )
     end)

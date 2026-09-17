@@ -8,7 +8,29 @@ Versionsnummern der Bridge folgen [Semantic Versioning](https://semver.org/lang/
 
 ## [Unreleased]
 
-- **Backend** (neu): Spring-Boot-Anwendung unter `backend/`, die
+- **Frontend** (neu): Angular-Dashboard unter `frontend/` (Standalone-
+  Components, Signals, Tailwind CSS, `@lucide/angular`), optisch an
+  `MockDashboard/*.html` angelehnt, pollt alle 5 Sekunden gegen das Backend:
+  `/start` (Savegame erstellen), `/dashboard` (Landingpage), `/fields`
+  (Feld-Telemetrie/Ertragsprognose), `/finance` (Kontostand-Verlauf,
+  Einnahmen/Ausgaben, Reputation/Mitarbeiterzufriedenheit, Saisonziel),
+  `/storage` (Lagerbestaende inkl. Marktpreise), `/mailbox`
+  (Firmenpostfach). Siehe `frontend/README.md`.
+- **Backend**: um fuenf neue REST-Module erweitert - `fields/`
+  (`GET /api/fields`), `finance/` (`GET /api/finance`, Einnahmen/Ausgaben
+  aus Telemetrie-Deltas), `mailbox/` (`GET /api/mailbox`,
+  `POST /api/mailbox/{id}/read`, periodische Nachrichtengenerierung aus
+  Mock-Vorlagen mit `TODO(KI-Integration)`-Markierung fuer spaetere
+  KI-Anbindung), `progression/` (`GET /api/progression`: Reputation/
+  Mitarbeiterzufriedenheit sowie ein typisiertes Saisonziel je Farm -
+  beide Konzepte kommen nicht aus der Bridge, sondern werden analog zum
+  Postfach ueber Mock-Vorlagen mit einem neutralen Platzhalter je Farm
+  initialisiert; die eigentliche Berechnungslogik folgt spaeter), sowie
+  `dashboard/` um Wetter und Lagerbestand-Marktpreise erweitert. Neue
+  Flyway-Migrationen V7-V11 (Postfach-Tabelle, Wetter-/Anbau-/
+  Marktpreis-Spalten, Farm-Werte- und Saisonziel-Tabellen). Siehe
+  `backend/README.md`.
+- **Backend** (neu, urspruenglich): Spring-Boot-Anwendung unter `backend/`, die
   `telemetry.json`/`world.json`/`farm.json` periodisch einliest, ueber einen
   Verarbeitungsschritt-Erweiterungspunkt reicht und als historisierte
   Entitaeten in MariaDB speichert (Schema per Flyway-Migrationen). Siehe
@@ -19,7 +41,44 @@ Versionsnummern der Bridge folgen [Semantic Versioning](https://semver.org/lang/
   GitHub Actions).
 - `season`/`weather` aus `telemetry.json` entfernt und `WeatherCollector`
   komplett entfernt, da dessen einziger Zweck (Jahreszeit-/Wetter-Werte fuer
-  `telemetry.json`) damit entfaellt.
+  `telemetry.json`) damit entfaellt. (Wetter kam mit Version 2.2.0 der
+  Bridge in anderer Form - direkt in `telemetry.json`, ohne eigenes
+  `WeatherCollector`-Modul - wieder zurueck, siehe unten.)
+
+## [2.2.1] - Bridge
+
+- **Bugfix**: `month` in `telemetry.json` war immer `0`, da
+  `environment.currentMonth` in FS25 nicht existiert (fruehere, falsch
+  zugeordnete Quellenangabe - siehe `Bridge/README.md`, "Monat"-Zeile der
+  Konfidenz-Tabelle). Der Monat wird jetzt korrekt aus
+  `environment.currentPeriod` plus derselben Nord-/Suedhalbkugel-Verschiebung
+  berechnet, die die Engine selbst in `I18N:formatPeriod()` verwendet
+  (`TelemetryCollector.calendarMonthFromPeriod()`, neu, unit-getestet).
+- **Bugfix**: `fruitType`/`growthState` einzelner Felder in `world.json`
+  konnten durch eine Kollision zwischen der bestaetigten
+  `field.farmland`-Zuordnung und dem unbestaetigten
+  `fieldState.farmlandId`-Fallback nichtdeterministisch mit den Anbaudaten
+  eines anderen Feldes ueberschrieben werden. `FarmPulseBridge.readFieldCrops()`
+  verwirft jetzt einen Fallback-Eintrag, sobald fuer dieselbe farmlandId
+  bereits ein bestaetigter Eintrag vorliegt (`FieldCollector.shouldReplaceCropEntry()`,
+  neu, unit-getestet). Ausserdem in `Bridge/README.md` dokumentiert: die
+  verbleibende, inhaerente Engine-Grenze der Einzelpunkt-Abtastung von
+  `field:getFieldState()` (misst nur den Feld-Polygon-Mittelpunkt, keine
+  Flaechen-Aggregation) kann weiterhin dazu fuehren, dass der gemeldete Zustand
+  bei teilweise bewirtschafteten Feldern vom Rest der Flaeche abweicht.
+
+## [2.2.0] - Bridge
+
+- Aktuellen Wettertyp + Temperatur zu `telemetry.json` ergaenzt
+  (`FarmPulseBridge.readWeather()`, `TelemetryCollector`).
+- Feld-Anbaudaten (Fruchtart, Wachstumsfortschritt, Ertragsschaetzung) zu
+  `world.json`/`fields[]` ergaenzt - liest zusaetzlich `g_fieldManager.fields`
+  (nicht nur `g_farmlandManager`), siehe `FarmPulseBridge.readFieldCrops()`,
+  `FieldCollector.computeCropInfo()`.
+- Aktuellen sowie besten Marktpreis (samt Periode) je Fill-Typ zu
+  `world.json`/`storages[]` ergaenzt (neues, testbares
+  `PriceCollector.lua`-Modul), siehe `FarmPulseBridge.readFillTypePrice()`.
+- `Tools/mock-bridge.sh` bei jeder der drei obigen Erweiterungen mitgezogen.
 
 ## [2.1.0] - Bridge
 

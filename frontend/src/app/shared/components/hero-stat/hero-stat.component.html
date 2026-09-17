@@ -1,0 +1,24 @@
+<div
+  class="relative rounded-md border bg-fp-panel p-4"
+  [class.border-fp-border]="accent() === 'accent'"
+  [class.border-fp-warn]="accent() === 'warn'"
+  [class.border-opacity-30]="accent() === 'warn'"
+>
+  <div class="flex items-start justify-between">
+    <div class="flex items-center gap-2">
+      <span
+        class="flex h-8 w-8 items-center justify-center rounded-sm border border-fp-border bg-fp-bg"
+        [class.text-fp-accent]="accent() === 'accent'"
+        [class.text-fp-warn]="accent() === 'warn'"
+      >
+        <ng-content select="[icon]" />
+      </span>
+      <span class="font-display text-[10px] uppercase tracking-[0.16em] text-fp-muted">{{ label() }}</span>
+    </div>
+  </div>
+  <div class="mt-3 font-display text-2xl font-bold text-fp-text">{{ value() }}</div>
+  @if (sub()) {
+    <div class="mt-0.5 font-body text-[11px] text-fp-muted">{{ sub() }}</div>
+  }
+  <ng-content select="[trend]" />
+</div>
