@@ -530,16 +530,19 @@ function FarmPulseBridge.readVehiclePrices(farmId)
 end
 
 --- Liest die rohen Lager-/Silobestaende der aktuellen Farm ueber die
--- Produktionspunkte der Karte (fuer die "storages"-Liste, siehe
--- StorageCollector).
+-- Produktionspunkte UND die frei platzierten Hof-Silos der Karte (fuer die
+-- "storages"-Liste, siehe StorageCollector).
 --
--- TEILWEISE BESTAETIGT (siehe README.md): gegen einen echten, veroeffentlichten
--- Mod geprueft (FS25_UpgradableFactories fuer
+-- TEILWEISE BESTAETIGT (siehe README.md): Produktionspunkt-Teil gegen einen
+-- echten, veroeffentlichten Mod geprueft (FS25_UpgradableFactories fuer
 -- g_currentMission.productionChainManager.productionPoints und
--- prodpoint.storage.fillLevels/.capacities als Struktur). Deckt damit
--- bestaetigt Produktionspunkt-Lager ab; ob dieselbe Struktur auch frei
--- platzierte Hof-Silos (Placeables) umfasst, ist NICHT bestaetigt - siehe
--- README.md fuer eine Einordnung als moegliche Folgearbeit.
+-- prodpoint.storage.fillLevels/.capacities als Struktur). Hof-Silo-Teil
+-- (spec_silo) gegen einen zweiten echten, veroeffentlichten Mod geprueft
+-- (FS25_AdjustStorageCapacity fuer placeable.spec_silo.storages als Liste
+-- von Storage-Objekten mit .fillLevels/.capacities/.capacity). Ohne den
+-- Hof-Silo-Teil blieb "amount" fuer alle Fill-Typen dauerhaft 0, sobald die
+-- Ernte ausschliesslich in frei platzierten Silos statt in
+-- Produktionspunkten lagert - das ist der Regelfall fuer die meisten Hoefe.
 -- @param farmId FarmID, siehe readFarmId()
 -- @return Liste roher {fillType, amount, capacity}-Tabellen (leer, falls der
 --         Zugriff fehlschlaegt)
@@ -571,7 +574,42 @@ function FarmPulseBridge.readStorages(farmId)
     end)
 
     if not ok then
-        FarmPulseBridge.log("WARNUNG: Konnte Lagerbestaende nicht ueber g_currentMission.productionChainManager lesen - exportiere leere storages-Liste.")
+        FarmPulseBridge.log("WARNUNG: Konnte Lagerbestaende nicht ueber g_currentMission.productionChainManager lesen.")
+    end
+
+    local siloOk = pcall(function()
+        local placeables = g_currentMission.placeableSystem.placeables
+        for _, placeable in ipairs(placeables) do
+            if placeable.spec_silo ~= nil and placeable.spec_silo.storages ~= nil then
+                local ownerOk, ownerFarmId = pcall(function() return placeable:getOwnerFarmId() end)
+                if ownerOk and ownerFarmId == farmId then
+                    for _, storage in ipairs(placeable.spec_silo.storages) do
+                        for fillTypeIndex, fillLevel in pairs(storage.fillLevels or {}) do
+                            local fillTypeName = fillTypeIndex
+                            pcall(function()
+                                fillTypeName = g_fillTypeManager:getFillTypeNameByIndex(fillTypeIndex)
+                            end)
+                            local capacity = storage.capacity or 0
+                            if storage.capacities ~= nil then
+                                capacity = storage.capacities[fillTypeIndex] or 0
+                            end
+                            table.insert(raw, {
+                                fillType = tostring(fillTypeName),
+                                amount = fillLevel,
+                                capacity = capacity,
+                            })
+                        end
+                    end
+                end
+            end
+        end
+    end)
+
+    if not siloOk then
+        FarmPulseBridge.log("WARNUNG: Konnte Hof-Silo-Lagerbestaende nicht ueber g_currentMission.placeableSystem lesen.")
+    end
+
+    if not ok and not siloOk then
         return {}
     end
 
