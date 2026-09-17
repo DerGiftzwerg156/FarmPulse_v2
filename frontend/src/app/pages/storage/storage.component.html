@@ -58,6 +58,12 @@
                       {{ (storage.currentPricePer1000L | currency: 'EUR' : 'symbol' : '1.2-2' : 'de') ?? '' }}
                     </span>
                   </div>
+                  <div class="flex items-center justify-between">
+                    <span class="font-display text-[10px] uppercase tracking-[0.12em] text-fp-muted">Warenwert</span>
+                    <span class="font-display text-[11px] font-semibold text-fp-text">
+                      {{ (storageValue(storage) | currency: 'EUR' : 'symbol' : '1.2-2' : 'de') ?? '' }}
+                    </span>
+                  </div>
                 }
                 @if (storage.bestPricePer1000L !== null) {
                   <div class="flex items-center justify-between">

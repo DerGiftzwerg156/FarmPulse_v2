@@ -3,6 +3,7 @@ import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { LucideTrendingUp, LucideWarehouse } from '@lucide/angular';
 import { DashboardService } from '../../core/services/dashboard.service';
+import { StorageItem } from '../../core/models/dashboard.model';
 
 const NEARLY_FULL_THRESHOLD_PERCENT = 90;
 
@@ -23,5 +24,12 @@ export class StorageComponent {
 
   isNearlyFull(fillPercentage: number): boolean {
     return fillPercentage >= NEARLY_FULL_THRESHOLD_PERCENT;
+  }
+
+  storageValue(storage: StorageItem): number | null {
+    if (storage.currentPricePer1000L === null) {
+      return null;
+    }
+    return (storage.amount * storage.currentPricePer1000L) / 1000;
   }
 }
