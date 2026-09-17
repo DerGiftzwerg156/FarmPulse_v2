@@ -1,0 +1,50 @@
+[
+  {
+    "type": "HARVEST_AMOUNT",
+    "title": "500 t Weizen ernten",
+    "unit": "t",
+    "targetValue": 500,
+    "fillType": "WHEAT",
+    "deadlineLabel": null
+  },
+  {
+    "type": "HARVEST_AMOUNT",
+    "title": "300 t Gerste ernten",
+    "unit": "t",
+    "targetValue": 300,
+    "fillType": "BARLEY",
+    "deadlineLabel": null
+  },
+  {
+    "type": "MONEY_BALANCE",
+    "title": "Einen Kontostand von 2.000.000 € erreichen",
+    "unit": "€",
+    "targetValue": 2000000,
+    "fillType": null,
+    "deadlineLabel": null
+  },
+  {
+    "type": "MONEY_BALANCE",
+    "title": "Einen Kontostand von 500.000 € erreichen",
+    "unit": "€",
+    "targetValue": 500000,
+    "fillType": null,
+    "deadlineLabel": null
+  },
+  {
+    "type": "EMPLOYEE_COUNT",
+    "title": "Zwei neue Mitarbeiter einstellen",
+    "unit": "Mitarbeiter",
+    "targetValue": 2,
+    "fillType": null,
+    "deadlineLabel": "Bis Jahresende"
+  },
+  {
+    "type": "CUSTOM",
+    "title": "Den Fuhrpark auf einen Wert von 300.000 € ausbauen",
+    "unit": "€",
+    "targetValue": 300000,
+    "fillType": null,
+    "deadlineLabel": null
+  }
+]

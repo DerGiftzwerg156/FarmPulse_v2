@@ -45,13 +45,19 @@ backend/
     │   ├── MailboxService.java              Liest Nachrichten der aktiven Farm
     │   ├── MailboxGenerationService.java    Erzeugt periodisch neue Nachrichten aus Mock-Vorlagen
     │   └── dto/
+    ├── progression/                          Werte (Reputation/Mitarbeiterzufriedenheit) + Saisonziel (siehe unten)
+    │   ├── ProgressionController.java       GET /api/progression
+    │   ├── ProgressionService.java          Legt Platzhalterwerte je Farm einmalig an, liest sie danach unveraendert
+    │   ├── SeasonGoalTemplate.java           Record fuer season-goal-templates.json
+    │   └── dto/
     ├── domain/                              JPA-Entitaeten
     └── repository/                          Spring-Data-Repositories
 └── src/main/resources/
     ├── application.yml
     ├── application-docker.yml            Ueberschreibt DB-Host/Austauschordner fuer den Container-Betrieb
     ├── mailbox/mailbox-templates.json     Mock-Nachrichtenvorlagen fuer MailboxGenerationService
-    └── db/migration/                        Flyway-Migrationen (V1-V9)
+    ├── progression/season-goal-templates.json  Mock-Saisonzielvorlagen fuer ProgressionService
+    └── db/migration/                        Flyway-Migrationen (V1-V11)
 ```
 
 ### Ingest-Pipeline
@@ -158,6 +164,30 @@ Nachrichten sowie eine eigene `/mailbox`-Seite (Vorlage
 `MockDashboard/Postfach.html`) mit Suche/Filtern; beide oeffnen Nachrichten
 in einem Modal.
 
+### Werte + Saisonziel (`progression/`)
+
+`ProgressionController` stellt die "Werte"- und "Saisonziel"-Panels der
+Angular-Seite `/finance` (Vorlage `MockDashboard/Finances.html`) bereit:
+
+- `GET /api/progression` - Reputation/Mitarbeiterzufriedenheit (je 0-100%)
+  sowie das aktuelle Saisonziel der aktiven Farm.
+
+Beide Konzepte stammen **nicht** aus der Bridge - FS25 kennt weder
+Reputation/Mitarbeiterzufriedenheit noch Saisonziele. `ProgressionService`
+legt beim ersten Aufruf je Farm einmalig Platzhalterwerte an (neutrale 50%
+fuer die Werte, ein zufaellig aus `season-goal-templates.json`
+(`src/main/resources/progression/`) gewaehltes Saisonziel mit
+`currentValue = 0`) und liest sie danach unveraendert aus der Datenbank -
+analog zum Postfach-Vorlagen-Muster (siehe `MailboxGenerationService`
+oben). Die eigentliche Berechnungslogik (wie Reputation/
+Mitarbeiterzufriedenheit sich veraendern, wie der Fortschritt eines
+Saisonziels aus dem tatsaechlichen Farm-Zustand ermittelt wird) ist bewusst
+noch nicht implementiert (siehe `backend/docs/MOCK_DASHBOARD_DATENLUECKEN.md`).
+Ein Saisonziel ist typisiert (`SeasonGoalType`:
+`MONEY_BALANCE`/`HARVEST_AMOUNT`/`EMPLOYEE_COUNT`/`CUSTOM`), damit eine
+spaetere Fortschrittsberechnung weiss, welche Farm-Kennzahl sie
+heranziehen muss.
+
 ### Bekannte Einschraenkung: eine aktive Farm pro Instanz
 
 `world.json` und `farm.json` enthalten selbst keine FarmID (nur `telemetry.json`, siehe
@@ -179,6 +209,8 @@ fuer den Erweiterungsprozess).
 | `field_snapshot` | Volle Feldliste je `world_snapshot` (kein Delta, siehe Bridge-Format). Zusaetzlich zu Groesse/Preis optional Fruchtart, Wachstumsstand (0..1) und geschaetzte Erntemenge in Litern, sofern das Feld aktuell eine Frucht traegt. |
 | `storage_snapshot` | Volle Lagerbestandsliste je `world_snapshot`. Zusaetzlich zu Fuellgrad optional aktueller Marktpreis sowie bester Preis + Periode je Fill-Typ (nullable, siehe Bridge/README.md, Abschnitt "Marktpreise"). |
 | `mailbox_message` | Eine Zeile je generierter Postfach-Nachricht (siehe "Postfach / Farm-Mailbox" oben). |
+| `farm_values` | Genau eine Zeile je Farm: Reputation/Mitarbeiterzufriedenheit (je 0-100%, siehe "Werte + Saisonziel" oben). `farm_id` ist zugleich Primaerschluessel. |
+| `season_goal` | Eine Zeile je (aktuellem oder vergangenem) Saisonziel einer Farm; hoechstens eines je Farm mit `status = ACTIVE` (siehe "Werte + Saisonziel" oben). |
 | `savegame_backstory` | Die einmalig eingegebene "Vorgeschichte" eines Savegames (siehe "Savegame-Start" oben). Hoechstens eine Zeile; `farm_id` nullable, solange die Farm noch nicht bekannt ist. |
 
 Schema-Aenderungen erfolgen ausschliesslich ueber neue Flyway-Migrationen unter

@@ -39,4 +39,57 @@
       </div>
     </section>
   </div>
+
+  <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+    <section class="rounded-md border border-fp-border bg-fp-panel p-4">
+      <h3 class="mb-3 font-display text-[11px] font-semibold uppercase tracking-[0.18em] text-fp-muted">Werte</h3>
+      <div class="space-y-4">
+        <div>
+          <div class="mb-1 flex items-center justify-between">
+            <span class="flex items-center gap-1.5 font-display text-[10px] uppercase tracking-[0.14em] text-fp-muted">
+              <svg lucideStar class="h-3.5 w-3.5"></svg>
+              Reputation
+            </span>
+            <span class="font-display text-[12px] font-bold text-fp-text">{{ progression().reputationPercent }}%</span>
+          </div>
+          <div class="h-1.5 w-full overflow-hidden rounded-full bg-fp-bg ring-1 ring-inset ring-fp-border">
+            <div class="h-full rounded-full bg-fp-accent transition-all" [style.width.%]="progression().reputationPercent"></div>
+          </div>
+        </div>
+        <div>
+          <div class="mb-1 flex items-center justify-between">
+            <span class="flex items-center gap-1.5 font-display text-[10px] uppercase tracking-[0.14em] text-fp-muted">
+              <svg lucideHeart class="h-3.5 w-3.5"></svg>
+              Mitarbeiterzufriedenheit
+            </span>
+            <span class="font-display text-[12px] font-bold text-fp-text">{{ progression().employeeSatisfactionPercent }}%</span>
+          </div>
+          <div class="h-1.5 w-full overflow-hidden rounded-full bg-fp-bg ring-1 ring-inset ring-fp-border">
+            <div class="h-full rounded-full bg-fp-accent transition-all" [style.width.%]="progression().employeeSatisfactionPercent"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    @if (seasonGoal(); as goal) {
+      <section class="rounded-md border border-fp-border bg-fp-panel p-4">
+        <h3 class="mb-3 font-display text-[11px] font-semibold uppercase tracking-[0.18em] text-fp-muted">Saisonziel: {{ goal.title }}</h3>
+        <div class="flex items-center gap-2">
+          <svg lucideTarget class="h-5 w-5 text-fp-accent"></svg>
+          <span class="font-display text-lg font-bold text-fp-text">
+            {{ goal.currentValue | number: '1.0-1' : 'de' }} / {{ goal.targetValue | number: '1.0-0' : 'de' }} {{ goal.unit }}
+          </span>
+        </div>
+        @if (goal.deadlineLabel) {
+          <p class="mt-1 font-body text-[11px] text-fp-muted">{{ goal.deadlineLabel }}</p>
+        }
+        <div class="mt-2">
+          <div class="h-1.5 w-full overflow-hidden rounded-full bg-fp-bg ring-1 ring-inset ring-fp-border">
+            <div class="h-full rounded-full bg-fp-warn transition-all" [style.width.%]="seasonGoalPercent()"></div>
+          </div>
+        </div>
+        <div class="mt-1 font-body text-[11px] text-fp-muted">{{ seasonGoalPercent() }}% erreicht</div>
+      </section>
+    }
+  </div>
 </div>

@@ -9,9 +9,13 @@ import java.util.List;
  * Zeitraum (die zuletzt aufgezeichneten Telemetrie-Snapshots), nicht auf
  * einen festen Kalenderzeitraum.
  *
- * Reputation, Mitarbeiterzufriedenheit, Saisonziel und Transaktions-Logs
- * aus der Vorlage fehlen bewusst - die Bridge liefert dafuer keine Daten
- * (siehe backend/docs/MOCK_DASHBOARD_DATENLUECKEN.md).
+ * Transaktions-Logs aus der Vorlage fehlen bewusst - die Bridge liefert
+ * dafuer keine Daten (siehe backend/docs/MOCK_DASHBOARD_DATENLUECKEN.md).
+ * Reputation, Mitarbeiterzufriedenheit und Saisonziel liefert stattdessen
+ * das getrennte {@code GET /api/progression} (siehe
+ * {@code de.farmpulse.backend.progression.ProgressionController}) - beide
+ * Konzepte stammen ebenfalls nicht aus der Bridge, wurden aber bewusst als
+ * eigenstaendiges Modul umgesetzt (siehe MOCK_DASHBOARD_DATENLUECKEN.md).
  */
 public record FinanceResponse(
         long balance,

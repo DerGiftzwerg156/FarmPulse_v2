@@ -91,15 +91,42 @@ Zustands-Exporteur zu einem zustandsbehafteten Event-Logger machen). Die
 Finanzen-Seite zeigt daher nur aggregierte Einnahmen/Ausgaben statt
 erfundener Einzelposten.
 
-## Reputation, Mitarbeiterzufriedenheit, Saisonziel
+## Reputation, Mitarbeiterzufriedenheit, Saisonziel — ✅ umgesetzt (Werte, keine Berechnung)
 
 Der Mock zeigt zusätzlich einen Reputationswert (%), eine
 Mitarbeiterzufriedenheit (%) sowie ein Saison-Kampagnenziel ("184,5 / 500 t
 Getreide", 37% erreicht). Für keinen dieser drei Werte gibt es ein
-Gegenstück in der FS25-Modding-API oder im Spielzustand - es handelt sich
-um Konzepte des fiktiven Mock-Prototyps ohne Bezug zu echten
-Spieldaten. Diese Widgets wurden daher nicht in die Finanzen-Seite
-übernommen, statt Zufallswerte zu erfinden.
+Gegenstück in der FS25-Modding-API oder im Spielzustand - es handelt sich um
+Konzepte des fiktiven Mock-Prototyps ohne Bezug zu echten Spieldaten.
+Anders als bei den übrigen Datenlücken in dieser Datei war hier explizit
+gewünscht, das Konzept trotzdem einzubauen, statt es wegzulassen: die
+Datenmodelle existieren, werden in der Datenbank gespeichert und im
+Frontend angezeigt - nur die eigentliche Berechnungslogik fehlt noch
+bewusst.
+
+- **Reputation/Mitarbeiterzufriedenheit** (`FarmValues`, Migration V11):
+  genau eine Zeile je Farm, `reputationPercent`/`employeeSatisfactionPercent`
+  (0-100). `ProgressionService` legt beim ersten Aufruf je Farm einen
+  neutralen Platzhalter (je 50%) an und schreibt ihn danach nicht mehr fort
+  - wie sich diese Werte aus dem Farm-Zustand berechnen sollen, ist noch
+  offen.
+- **Saisonziel** (`SeasonGoal`, Migration V11): typisiertes Ziel
+  (`SeasonGoalType`: `MONEY_BALANCE`/`HARVEST_AMOUNT`/`EMPLOYEE_COUNT`/
+  `CUSTOM`) mit `targetValue`/`currentValue`/`unit` sowie optionalem
+  `fillType` (bei `HARVEST_AMOUNT`) und `deadlineLabel` (Freitext, keine
+  strukturierte Frist-Auswertung). `ProgressionService` wählt beim ersten
+  Aufruf je Farm zufällig eines von mehreren Beispielzielen aus
+  `progression/season-goal-templates.json` (analog zu den
+  Postfach-Vorlagen, siehe `MailboxGenerationService`) und setzt
+  `currentValue` auf 0 - die Fortschrittsberechnung aus dem tatsächlichen
+  Farm-Zustand (z.B. Kontostand mit `targetValue` vergleichen, geerntete
+  Menge eines Fill-Typs aufsummieren) ist noch nicht implementiert.
+- Backend: `GET /api/progression` (neues Modul
+  `de.farmpulse.backend.progression`, bewusst getrennt von `/api/finance`,
+  das ausschließlich Bridge-abgeleitete Geldwerte liefert). Frontend:
+  `/finance`-Seite zeigt die Panels "Werte" (zwei Fortschrittsbalken) und
+  "Saisonziel" (aktueller/Ziel-Wert, Fortschrittsbalken, "X% erreicht") -
+  Letzteres nur, sofern ein aktives Ziel vorliegt.
 
 ## Einzelfahrzeug-Telemetrie (FleetTracker im Mock)
 

@@ -13,16 +13,23 @@ Versionsnummern der Bridge folgen [Semantic Versioning](https://semver.org/lang/
   `MockDashboard/*.html` angelehnt, pollt alle 5 Sekunden gegen das Backend:
   `/start` (Savegame erstellen), `/dashboard` (Landingpage), `/fields`
   (Feld-Telemetrie/Ertragsprognose), `/finance` (Kontostand-Verlauf,
-  Einnahmen/Ausgaben), `/storage` (Lagerbestaende inkl. Marktpreise),
-  `/mailbox` (Firmenpostfach). Siehe `frontend/README.md`.
-- **Backend**: um vier neue REST-Module erweitert - `fields/`
+  Einnahmen/Ausgaben, Reputation/Mitarbeiterzufriedenheit, Saisonziel),
+  `/storage` (Lagerbestaende inkl. Marktpreise), `/mailbox`
+  (Firmenpostfach). Siehe `frontend/README.md`.
+- **Backend**: um fuenf neue REST-Module erweitert - `fields/`
   (`GET /api/fields`), `finance/` (`GET /api/finance`, Einnahmen/Ausgaben
   aus Telemetrie-Deltas), `mailbox/` (`GET /api/mailbox`,
   `POST /api/mailbox/{id}/read`, periodische Nachrichtengenerierung aus
   Mock-Vorlagen mit `TODO(KI-Integration)`-Markierung fuer spaetere
-  KI-Anbindung), sowie `dashboard/` um Wetter und Lagerbestand-Marktpreise
-  erweitert. Neue Flyway-Migrationen V7-V10 (Postfach-Tabelle,
-  Wetter-/Anbau-/Marktpreis-Spalten). Siehe `backend/README.md`.
+  KI-Anbindung), `progression/` (`GET /api/progression`: Reputation/
+  Mitarbeiterzufriedenheit sowie ein typisiertes Saisonziel je Farm -
+  beide Konzepte kommen nicht aus der Bridge, sondern werden analog zum
+  Postfach ueber Mock-Vorlagen mit einem neutralen Platzhalter je Farm
+  initialisiert; die eigentliche Berechnungslogik folgt spaeter), sowie
+  `dashboard/` um Wetter und Lagerbestand-Marktpreise erweitert. Neue
+  Flyway-Migrationen V7-V11 (Postfach-Tabelle, Wetter-/Anbau-/
+  Marktpreis-Spalten, Farm-Werte- und Saisonziel-Tabellen). Siehe
+  `backend/README.md`.
 - **Backend** (neu, urspruenglich): Spring-Boot-Anwendung unter `backend/`, die
   `telemetry.json`/`world.json`/`farm.json` periodisch einliest, ueber einen
   Verarbeitungsschritt-Erweiterungspunkt reicht und als historisierte
