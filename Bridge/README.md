@@ -111,6 +111,13 @@ weitere Quellen dazu:
     ("bester Preis + welche Periode" aus `fillType.economy.history`
     ermitteln) - staerkste verfuegbare Bestaetigung, da unabhaengig
     entwickelt und fuer denselben Anwendungsfall produktiv im Einsatz.
+12. **[FS25_AdjustStorageCapacity](https://github.com/rittermod/FS25_AdjustStorageCapacity)**
+    (rittermod) - ein echter, aktiv gepflegter FS25-Mod (`scripts/RmAdjustStorageCapacity.lua`),
+    der frei platzierte Hof-Silos ueber `g_currentMission.placeableSystem.placeables`
+    findet und deren Lagerobjekte unter `placeable.spec_silo.storages` liest
+    (jeweils mit `.fillLevels`/`.capacities`, sowie `.capacity` als
+    Fallback fuer eine je Fill-Typ gemeinsame Kapazitaet) - loest die zuvor
+    unbestaetigte Luecke bei frei platzierten Silos auf, siehe Tabelle unten.
 
 | Wert | Verwendeter Ansatz | Status |
 |---|---|---|
@@ -127,7 +134,7 @@ weitere Quellen dazu:
 | Hofname (`farmName`) | `g_farmManager:getFarmById(farmId).name` | **Bestaetigt** (Quelle 4, FS25_InfoDisplayExtension, echter veroeffentlichter Mod): liest `owningFarm.name` auf demselben Farm-Objekt, das diese Bridge bereits fuer `getBalance()` verwendet |
 | Spielername (`playerName`) | `g_currentMission.playerNickname` | **Bestaetigt** (Quelle 5, FS25_Tardis, echter veroeffentlichter Mod): referenziert dieses Feld direkt |
 | Fuhrpark-Wert (`fleetValue`) | `g_currentMission.vehicleSystem.vehicles` (Liste aller Fahrzeuge), je Eintrag `vehicle:getOwnerFarmId()` zum Filtern + `vehicle:getSellPrice()`, aufsummiert | **Bestaetigt** (Quelle 5, FS25_Tardis, und ein weiterer veroeffentlichter Mod, FS25_VehicleExplorer von teknogeek, fuer `g_currentMission.vehicleSystem.vehicles` als Fahrzeugliste dieser FS25-Engine-Generation - abgeloest gegenueber `g_currentMission.vehicles` aus FS19-FS22 -, Quelle 6 fuer `Vehicle:getSellPrice()` als real gehookte Methode). Bewusst nur der aggregierte Wert, keine Einzelfahrzeug-Details (siehe Einleitung) |
-| Lager-/Silobestaende (`storages`) | `g_currentMission.productionChainManager.productionPoints`, je Punkt `.storage.fillLevels`/`.storage.capacities` (indiziert nach Fill-Typ, aufgeloest ueber `g_fillTypeManager:getFillTypeNameByIndex()`) | **Teilweise bestaetigt** (Quelle 7, FS25_UpgradableFactories, echter veroeffentlichter Mod, fuer die Struktur von `.storage.fillLevels`/`.capacities` und `productionChainManager.productionPoints`): deckt damit bestaetigt Produktionspunkt-Lager ab. Ob dieselbe Struktur auch frei platzierte Hof-Silos (Placeables ohne Produktionspunkt-Charakter) umfasst, ist **nicht** bestaetigt - eine Web-Suche fand Hinweise auf `g_currentMission.placeableSystem.placeables`, gefiltert nach einer Lager-Spezialisierung (`spec_objectStorage`/`spec_palletSpawner`), als moeglichen zusaetzlichen Weg, aber ohne handfesten Quellcode-Beleg. Siehe Abschnitt "Bekannte Luecken" unten |
+| Lager-/Silobestaende (`storages`) | Zwei Quellen kombiniert: (1) `g_currentMission.productionChainManager.productionPoints`, je Punkt `.storage.fillLevels`/`.storage.capacities`; (2) `g_currentMission.placeableSystem.placeables`, gefiltert nach `.spec_silo`, je Silo-Objekt in `.spec_silo.storages` ebenfalls `.fillLevels`/`.capacities`/`.capacity` - jeweils indiziert nach Fill-Typ, aufgeloest ueber `g_fillTypeManager:getFillTypeNameByIndex()` | **Bestaetigt** (Quelle 7, FS25_UpgradableFactories, fuer die Produktionspunkt-Struktur; Quelle 12, FS25_AdjustStorageCapacity, echter veroeffentlichter Mod, fuer `placeable.spec_silo.storages` als Struktur frei platzierter Hof-Silos). **Korrektur**: eine fruehere Fassung dieser Bridge deckte ausschliesslich Produktionspunkte ab - `amount` blieb dadurch fuer alle Fill-Typen `0`, sobald die Ernte (wie beim Regelfall der meisten Hoefe) in frei platzierten Silos statt in Produktionspunkten lagerte, waehrend `capacity` durchaus befuellt sein konnte, falls ein Produktionspunkt mit derselben Fill-Typ-Liste existierte |
 | Temperatur (`temperature`) | `g_currentMission.environment.weather:getCurrentTemperature()` | **Bestaetigt** (Quelle 5 FS25_Tardis-Umfeld sowie Basisspiel-Skripte): mehrere echte FS25-Basisspiel-Skripte (`vehicles/specializations/Washable.lua`, `vehicles/VehicleSystem.lua`, `vehicles/specializations/Enterable.lua` - dort direkt an die Cockpit-Aussentemperaturanzeige gebunden) lesen an exakt dieser Stelle dieselbe Methode |
 | Wettertyp (`weatherType`) | Strategie 1: `weather.forecast:dataForTime(environment.currentMonotonicDay, environment.dayTime)` -> `weather:getWeatherObjectByIndex(season, objectIndex)` -> `WeatherType.getName(weatherObject.weatherType)`. Strategie 2 (Fallback): grobe Ableitung aus `weather:getIsHailing()`/`getIsSnowing()`/`getIsRaining()` | Strategie 1 **hergeleitet, nicht bestaetigt** (Quelle 8): Die `Weather`-Klasse selbst ist von GIANTS weder im SDK-Dump noch in der LUADOC offengelegt: die Aufrufkette wurde stattdessen aus echtem HUD-Nachbau-Code (Quelle 8) uebernommen. Die `WeatherType`-Konstanten (`SUN`/`PARTIALLY_CLOUDY`/`CLOUDY`/`RAIN`/`SNOW`/`HAIL`/`TWISTER`/`THUNDER`) selbst sind dagegen **bestaetigt** (Basisspiel `gui/hud/GameInfoDisplay.lua`). Strategie 2 nutzt ausschliesslich **bestaetigte** Einzelmethoden (Basisspiel `objects/SunAdmirer.lua`, `placeables/BeehiveSystem.lua`), liefert dafuer nur eine grobe Naeherung ohne "bewoelkt"/"Gewitter"/"Tornado" |
 | Aktueller Marktpreis (`currentPricePer1000L`) | `g_currentMission.economyManager:getPricePerLiter(fillType.index)` (Euro je Liter, × 1000 fuer den Export - siehe Dateiformat) | **Bestaetigt** (Quelle 10, dekompilierter Basisspiel-Quellcode, sowie unabhaengig durch ~10 echte, aktuell gepflegte FS25-Mods, die exakt dieselbe Signatur in Produktionscode aufrufen, u.a. `FS25_ForestryHelper`, `FS25_AutoDrive`, `VDTelemetry`, `FS25_MarketDynamics` - ungewoehnlich breite unabhaengige Bestaetigung fuer einen nicht offiziell dokumentierten Aufruf). Liefert einen **globalen** Marktpreis, keinen Preis je Verkaufsstelle (die einzelnen Verkaufsstellen/`SellingStation`-Objekte koennen den Basispreis noch mit stationsspezifischen Faktoren multiplizieren, das wird hier bewusst nicht nachgebildet) |
@@ -155,13 +162,6 @@ Bridge abstuerzt. Das Verhalten laesst sich also risikofrei ausprobieren.
 
 ### Bekannte Luecken (Stand jetzt, vor dem ersten Live-Test)
 
-- **Lagerbestaende** decken bestaetigt nur Produktionspunkte ab (Fabriken,
-  Verarbeitungsanlagen), noch nicht zwingend frei platzierte Hof-Silos. Falls
-  `storages` im Live-Test dauerhaft leer bleibt oder erkennbar unvollstaendig
-  ist (z.B. bekannte Getreidesilos fehlen), ist die naheliegende Erweiterung,
-  in `FarmPulseBridge.readStorages()` zusaetzlich
-  `g_currentMission.placeableSystem.placeables` nach einer
-  Lager-Spezialisierung zu durchsuchen.
 - **`fruitType`** kann trotz tatsaechlich angebauter Frucht `null` bleiben,
   falls beide Aufloesungs-Strategien in `FarmPulseBridge.readFieldCrops()`
   fehlschlagen (`FruitType.getName()` ist unbestaetigt, der Fallback ueber
@@ -236,8 +236,9 @@ Bridge abstuerzt. Das Verhalten laesst sich also risikofrei ausprobieren.
    fuer ein paar bekannte, bereits gekaufte Felder mit der Ingame-Kartenansicht
    uebereinstimmen.
 7. In `world.json` pruefen, ob `fleetValue` grob zur Anzahl/Klasse der
-   eigenen Fahrzeuge passt, und ob `storages` bekannte Lagerbestaende
-   (zumindest aus Produktionspunkten) korrekt widerspiegelt.
+   eigenen Fahrzeuge passt, und ob `storages` bekannte Lagerbestaende (sowohl
+   aus Produktionspunkten als auch aus frei platzierten Hof-Silos) korrekt
+   widerspiegelt.
 7b. In `world.json` bei einem bekannt bestellten Feld pruefen, ob `fruitType`
     zur im Spiel angezeigten Frucht passt und `growthState` grob zum
     sichtbaren Wachstumsstand (0 = gerade gesaet, 1 = erntereif). Bleiben
