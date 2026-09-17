@@ -40,7 +40,7 @@
     <app-hero-stat label="Kontostand" [value]="(dashboard()!.money | currency:'EUR':'symbol':'1.0-0':'de') ?? ''">
       <svg icon lucideWallet class="h-4 w-4"></svg>
       @if (moneyValues().length > 1) {
-        <div trend class="mt-2">
+        <div trend class="mt-2 h-7">
           <app-sparkline [values]="moneyValues()" />
         </div>
       }

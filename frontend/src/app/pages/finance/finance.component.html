@@ -4,43 +4,26 @@
     <p class="font-body text-[13px] text-fp-muted">Kontostand-Verlauf sowie Einnahmen und Ausgaben im dargestellten Zeitraum</p>
   </div>
 
-  <section class="rounded-md border border-fp-border bg-fp-panel p-4">
-    <h3 class="mb-3 font-display text-[11px] font-semibold uppercase tracking-[0.18em] text-fp-muted">Kontostand</h3>
-    <div class="mb-2 flex flex-wrap items-end justify-between gap-2">
-      <span class="font-display text-3xl font-bold text-fp-text">{{ (finance().balance | currency: 'EUR' : 'symbol' : '1.0-0' : 'de') ?? '' }}</span>
-      <span
-        class="font-body text-[12px]"
-        [class.text-fp-accent]="finance().balanceDeltaInPeriod >= 0"
-        [class.text-fp-warn]="finance().balanceDeltaInPeriod < 0"
-      >
-        {{ finance().balanceDeltaInPeriod >= 0 ? '+' : '' }}{{ (finance().balanceDeltaInPeriod | currency: 'EUR' : 'symbol' : '1.0-0' : 'de') ?? '' }} im Zeitraum
-      </span>
-    </div>
-    @if (balanceValues().length > 1) {
-      <div class="h-24">
-        <app-sparkline [values]="balanceValues()" />
+  <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+    <section class="rounded-md border border-fp-border bg-fp-panel p-4 lg:col-span-2">
+      <h3 class="mb-3 font-display text-[11px] font-semibold uppercase tracking-[0.18em] text-fp-muted">Kontostand</h3>
+      <div class="mb-2 flex items-end justify-between">
+        <span class="font-display text-3xl font-bold text-fp-text">{{ (finance().balance | currency: 'EUR' : 'symbol' : '1.0-0' : 'de') ?? '' }}</span>
+        <span
+          class="font-body text-[12px]"
+          [class.text-fp-accent]="finance().balanceDeltaInPeriod >= 0"
+          [class.text-fp-warn]="finance().balanceDeltaInPeriod < 0"
+        >
+          {{ finance().balanceDeltaInPeriod >= 0 ? '+' : '' }}{{ (finance().balanceDeltaInPeriod | currency: 'EUR' : 'symbol' : '1.0-0' : 'de') ?? '' }} im Zeitraum
+        </span>
       </div>
-    }
-  </section>
-
-  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-    <section class="rounded-md border border-fp-border bg-fp-panel p-4">
-      <h3 class="mb-3 font-display text-[11px] font-semibold uppercase tracking-[0.18em] text-fp-muted">Einnahmen (Zeitraum)</h3>
-      <div class="flex items-center gap-2">
-        <svg lucideTrendingUp class="h-5 w-5 text-fp-accent"></svg>
-        <span class="font-display text-2xl font-bold text-fp-accent">{{ (finance().incomeInPeriod | currency: 'EUR' : 'symbol' : '1.0-0' : 'de') ?? '' }}</span>
-      </div>
+      @if (balanceValues().length > 1) {
+        <div class="h-32">
+          <app-sparkline [values]="balanceValues()" />
+        </div>
+      }
     </section>
-    <section class="rounded-md border border-fp-border bg-fp-panel p-4">
-      <h3 class="mb-3 font-display text-[11px] font-semibold uppercase tracking-[0.18em] text-fp-muted">Ausgaben (Zeitraum)</h3>
-      <div class="flex items-center gap-2">
-        <svg lucideTrendingDown class="h-5 w-5 text-fp-warn"></svg>
-        <span class="font-display text-2xl font-bold text-fp-warn">{{ (finance().expenseInPeriod | currency: 'EUR' : 'symbol' : '1.0-0' : 'de') ?? '' }}</span>
-      </div>
-    </section>
-  </div>
 
-  <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
     <section class="rounded-md border border-fp-border bg-fp-panel p-4">
       <h3 class="mb-3 font-display text-[11px] font-semibold uppercase tracking-[0.18em] text-fp-muted">Werte</h3>
       <div class="space-y-4">
@@ -68,6 +51,23 @@
             <div class="h-full rounded-full bg-fp-accent transition-all" [style.width.%]="progression().employeeSatisfactionPercent"></div>
           </div>
         </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+    <section class="rounded-md border border-fp-border bg-fp-panel p-4">
+      <h3 class="mb-3 font-display text-[11px] font-semibold uppercase tracking-[0.18em] text-fp-muted">Einnahmen (Zeitraum)</h3>
+      <div class="flex items-center gap-2">
+        <svg lucideTrendingUp class="h-5 w-5 text-fp-accent"></svg>
+        <span class="font-display text-2xl font-bold text-fp-accent">{{ (finance().incomeInPeriod | currency: 'EUR' : 'symbol' : '1.0-0' : 'de') ?? '' }}</span>
+      </div>
+    </section>
+    <section class="rounded-md border border-fp-border bg-fp-panel p-4">
+      <h3 class="mb-3 font-display text-[11px] font-semibold uppercase tracking-[0.18em] text-fp-muted">Ausgaben (Zeitraum)</h3>
+      <div class="flex items-center gap-2">
+        <svg lucideTrendingDown class="h-5 w-5 text-fp-warn"></svg>
+        <span class="font-display text-2xl font-bold text-fp-warn">{{ (finance().expenseInPeriod | currency: 'EUR' : 'symbol' : '1.0-0' : 'de') ?? '' }}</span>
       </div>
     </section>
 
