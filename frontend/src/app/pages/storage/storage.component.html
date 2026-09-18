@@ -20,11 +20,59 @@
       </section>
     </div>
 
+    @if (storages().length > 0) {
+      <section class="rounded-md border border-fp-border bg-fp-panel p-4">
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div class="flex items-center gap-2 rounded-md border border-fp-border bg-fp-bg px-2 py-1.5">
+            <svg lucideSearch class="h-4 w-4 text-fp-muted"></svg>
+            <input
+              class="w-full bg-transparent font-body text-[13px] text-fp-text placeholder:text-fp-muted focus:outline-none lg:w-64"
+              placeholder="Füllart durchsuchen…"
+              [ngModel]="search()"
+              (ngModelChange)="search.set($event)"
+            />
+          </div>
+          <span class="font-body text-[11px] text-fp-muted">{{ filteredStorages().length }} von {{ storages().length }} Lagerstätten</span>
+        </div>
+
+        <div class="mt-3 flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            class="rounded-sm border px-2.5 py-1 font-display text-[10px] uppercase tracking-[0.12em] transition"
+            [class.border-fp-accent]="onlyFilled()"
+            [class.bg-fp-accent]="onlyFilled()"
+            [class.bg-opacity-10]="onlyFilled()"
+            [class.text-fp-accent]="onlyFilled()"
+            [class.border-fp-border]="!onlyFilled()"
+            [class.text-fp-muted]="!onlyFilled()"
+            (click)="toggleOnlyFilled(true)"
+          >
+            Nur befüllte
+          </button>
+          <button
+            type="button"
+            class="rounded-sm border px-2.5 py-1 font-display text-[10px] uppercase tracking-[0.12em] transition"
+            [class.border-fp-accent]="!onlyFilled()"
+            [class.bg-fp-accent]="!onlyFilled()"
+            [class.bg-opacity-10]="!onlyFilled()"
+            [class.text-fp-accent]="!onlyFilled()"
+            [class.border-fp-border]="onlyFilled()"
+            [class.text-fp-muted]="onlyFilled()"
+            (click)="toggleOnlyFilled(false)"
+          >
+            Alle anzeigen
+          </button>
+        </div>
+      </section>
+    }
+
     @if (storages().length === 0) {
       <p class="font-body text-sm text-fp-muted">Noch keine Lagerdaten bekannt.</p>
+    } @else if (filteredStorages().length === 0) {
+      <p class="font-body text-sm text-fp-muted">Keine Lagerstätten passen zu den gewählten Filtern.</p>
     } @else {
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        @for (storage of storages(); track storage.fillType) {
+        @for (storage of filteredStorages(); track storage.fillType) {
           <div class="rounded-md border border-fp-border bg-fp-panel p-4">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
