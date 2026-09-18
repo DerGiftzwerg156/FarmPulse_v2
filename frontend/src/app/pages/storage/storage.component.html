@@ -7,7 +7,7 @@
       <p class="font-body text-[13px] text-fp-muted">Füllstände aller Lagerstätten der Farm</p>
     </div>
 
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
       <section class="rounded-md border border-fp-border bg-fp-panel p-4">
         <h3 class="mb-3 font-display text-[11px] font-semibold uppercase tracking-[0.18em] text-fp-muted">Lagerstätten</h3>
         <div class="font-display text-xl font-bold text-fp-text">{{ storages().length }}</div>
@@ -16,6 +16,12 @@
         <h3 class="mb-3 font-display text-[11px] font-semibold uppercase tracking-[0.18em] text-fp-muted">Fast voll (≥ 90%)</h3>
         <div class="font-display text-xl font-bold" [class.text-fp-warn]="nearlyFullCount() > 0" [class.text-fp-text]="nearlyFullCount() === 0">
           {{ nearlyFullCount() }}
+        </div>
+      </section>
+      <section class="rounded-md border border-fp-border bg-fp-panel p-4">
+        <h3 class="mb-3 font-display text-[11px] font-semibold uppercase tracking-[0.18em] text-fp-muted">Gesamtwert</h3>
+        <div class="font-display text-xl font-bold text-fp-accent">
+          {{ (totalValue() | currency: 'EUR' : 'symbol' : '1.0-0' : 'de') ?? '' }}
         </div>
       </section>
     </div>

@@ -22,6 +22,10 @@ export class StorageComponent {
   protected readonly nearlyFullCount = computed(
     () => this.storages().filter((storage) => storage.fillPercentage >= NEARLY_FULL_THRESHOLD_PERCENT).length,
   );
+  /** Summe ueber alle Lagerstaetten, unabhaengig vom Filter - fillTypes ohne currentPricePer1000L (nicht handelbar) tragen nichts bei. */
+  protected readonly totalValue = computed(() =>
+    this.storages().reduce((sum, storage) => sum + (this.storageValue(storage) ?? 0), 0),
+  );
 
   protected readonly search = signal('');
   /** Standardmaessig nur befuellte Lager anzeigen - die world.json liefert auch alle leeren fillTypes, was bei vielen Mods die Uebersicht sprengt. */
