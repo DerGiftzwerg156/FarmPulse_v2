@@ -93,7 +93,7 @@ class SavegameIntegrationTest {
         assertThat(afterTelemetry.started()).isFalse();
 
         Files.writeString(exchangeDir.resolve("world.json"),
-                "{\"fleetValue\":125000,\"fields\":[],\"storages\":[]}");
+                "{\"fleetValue\":125000,\"vehicles\":[],\"fields\":[],\"storages\":[]}");
         assertThat(worldIngestService.ingestIfChanged()).isPresent();
 
         Files.writeString(exchangeDir.resolve("farm.json"),

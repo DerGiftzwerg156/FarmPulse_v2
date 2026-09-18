@@ -2,11 +2,14 @@
     WorldCollector.lua
 
     Reine Verarbeitungslogik: baut aus bereits normalisierten Teil-Ergebnissen
-    (FieldCollector.buildFields(), VehicleCollector.buildFleetValue(),
-    StorageCollector.buildStorages()) die world.json-Nutzlast:
+    (FieldCollector.buildFields(), VehicleCollector.buildFleetValue()/
+    buildVehicles(), StorageCollector.buildStorages()) die world.json-Nutzlast:
 
         {
           "fleetValue": 125000,
+          "vehicles": [ { "name": "John Deere 8R 410", "category": "Traktoren",
+            "horsepowerHp": 410, "operatingHours": 128.5, "conditionPercent": 92.0,
+            "ownershipStatus": "OWNED", "sellPrice": 245000 } ],
           "fields": [ { "fieldId": 1, "ownerFarmId": 0, "sizeHa": 4.53, "price": 32000 } ],
           "storages": [ { "fillType": "WHEAT", "amount": 5000, "capacity": 20000,
             "currentPricePer1000L": 218.4, "bestPricePer1000L": 254.1,
@@ -26,7 +29,7 @@
 WorldCollector = {}
 
 --- Baut aus rohen Eingabewerten eine validierte, normalisierte world.json-Nutzlast.
--- @param rawState Tabelle mit den Feldern fields, fleetValue, storages
+-- @param rawState Tabelle mit den Feldern fields, fleetValue, vehicles, storages
 -- @return normalisierte Tabelle mit denselben Feldern, bereit fuer toJson()
 function WorldCollector.buildPayload(rawState)
     rawState = rawState or {}
@@ -34,6 +37,11 @@ function WorldCollector.buildPayload(rawState)
     local fields = rawState.fields
     if type(fields) ~= "table" then
         fields = {}
+    end
+
+    local vehicles = rawState.vehicles
+    if type(vehicles) ~= "table" then
+        vehicles = {}
     end
 
     local storages = rawState.storages
@@ -48,6 +56,7 @@ function WorldCollector.buildPayload(rawState)
 
     return {
         fleetValue = fleetValue,
+        vehicles = vehicles,
         fields = fields,
         storages = storages,
     }
@@ -56,6 +65,19 @@ end
 --- Serialisiert eine (bereits mit buildPayload erzeugte) Nutzlast als JSON-Text
 -- mit stabiler Feldreihenfolge.
 function WorldCollector.toJson(payload)
+    local vehicleEntries = {}
+    for i, vehicle in ipairs(payload.vehicles) do
+        vehicleEntries[i] = JsonEncoder.encodeObject({
+            { key = "name", value = vehicle.name },
+            { key = "category", value = vehicle.category },
+            { key = "horsepowerHp", value = vehicle.horsepowerHp },
+            { key = "operatingHours", value = vehicle.operatingHours },
+            { key = "conditionPercent", value = vehicle.conditionPercent },
+            { key = "ownershipStatus", value = vehicle.ownershipStatus },
+            { key = "sellPrice", value = vehicle.sellPrice },
+        })
+    end
+
     local fieldEntries = {}
     for i, field in ipairs(payload.fields) do
         fieldEntries[i] = JsonEncoder.encodeObject({
@@ -84,6 +106,7 @@ function WorldCollector.toJson(payload)
 
     return JsonEncoder.encodeObject({
         { key = "fleetValue", value = payload.fleetValue },
+        { key = "vehicles", raw = JsonEncoder.encodeRawArray(vehicleEntries) },
         { key = "fields", raw = JsonEncoder.encodeRawArray(fieldEntries) },
         { key = "storages", raw = JsonEncoder.encodeRawArray(storageEntries) },
     })

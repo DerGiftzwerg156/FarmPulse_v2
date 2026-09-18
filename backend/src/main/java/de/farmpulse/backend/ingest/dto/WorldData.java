@@ -8,6 +8,7 @@ import java.util.List;
  */
 public record WorldData(
         long fleetValue,
+        List<VehicleData> vehicles,
         List<FieldData> fields,
         List<StorageData> storages) {
 }

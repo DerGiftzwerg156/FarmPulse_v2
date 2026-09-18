@@ -128,19 +128,43 @@ bewusst.
   "Saisonziel" (aktueller/Ziel-Wert, Fortschrittsbalken, "X% erreicht") -
   Letzteres nur, sofern ein aktives Ziel vorliegt.
 
-## Einzelfahrzeug-Telemetrie (FleetTracker im Mock)
+## Einzelfahrzeug-Telemetrie (FleetTracker im Mock) — ✅ teilweise umgesetzt
 
 Der Mock zeigt pro Fahrzeug: Name/Typ, zugewiesener Mitarbeiter (oder "Auto
 GPS"), Status (aktiv/Leerlauf/Werkstatt), Kraftstoff- und Schadenprozent,
 aktuellen Job sowie GPS-Position (X/Y).
 
-Aktuell liefert `world.json` nur den **aggregierten** Fuhrparkwert
-(`fleetValue`, siehe `WorldSnapshot.getFleetValue()`), keine Liste einzelner
-Fahrzeuge. Um das nachzuziehen, müsste die Bridge `world.json` (oder eine
-neue Datei) um ein `vehicles[]`-Array ergänzen, z.B. mit `id`, `name`,
-`type`, `fuelPercent`, `damagePercent`, `assignedWorker`, `currentJob`,
-`positionX`/`positionY`, `isActive`. Der "Flotte"-Punkt im Sidebar bleibt
-bis dahin ausgegraut.
+`world.json`/`vehicles[]` liefert inzwischen "Grundlegende" Fahrzeugdaten je
+Fahrzeug (statt nur des aggregierten `fleetValue`): `name` (Marke + Modell,
+`Vehicle:getFullName()`), `category` (lokalisierter Kategorie-Anzeigename,
+z.B. "Traktoren", ueber `g_storeManager:getCategoryByName(...).title`),
+`horsepowerHp` (Motorleistung, `null` bei nicht-motorisierten Fahrzeugen),
+`operatingHours` (Betriebsstunden, `Vehicle:getOperatingTime()`),
+`conditionPercent` (Zustand in %, aus `Vehicle:getDamageAmount()`
+abgeleitet), `ownershipStatus` (Eigentumsstatus - `OWNED`/`LEASED`/
+`MISSION`/`SHOP_CONFIG`/`UNKNOWN`, aus `Vehicle:getPropertyState()`) sowie
+`sellPrice` (Verkaufspreis, `Vehicle:getSellPrice()`) - siehe
+`Bridge/README.md`, Abschnitt "Fuhrpark-Details"/Tabelle, für die Konfidenz
+je Feld (insbesondere die Einheit von `horsepowerHp` ist HERGELEITET, nicht
+abschließend bestätigt).
+
+- Backend: `vehicle_snapshot` (Migration V12, um `category`/`ownershipStatus`
+  ergänzt in Migration V13) speichert die Liste je `WorldSnapshot`, analog zu
+  `field_snapshot`/`storage_snapshot`. `GET /api/vehicles`
+  (`de.farmpulse.backend.vehicles`) liefert die Fahrzeuge der aktiven Farm
+  samt Zusammenfassung (Anzahl, Gesamt-Verkaufswert, durchschnittlicher
+  Zustand).
+- Frontend: eigene `/fleet`-Seite (Sidebar-Punkt "Flotte", vormals
+  ausgegraut) zeigt Name, Kategorie, PS, Betriebsstunden, Zustand (Balken),
+  Eigentumsstatus und Verkaufspreis je Fahrzeug, mit Filtern nach Kategorie
+  und Eigentumsstatus sowie einer Namenssuche.
+
+**Weiterhin nicht abgedeckt** (keine bestätigte FS25-Modding-API-Quelle
+gefunden, siehe `Bridge/README.md`): zugewiesener Mitarbeiter, Status
+(aktiv/Leerlauf/Werkstatt), aktueller Job, GPS-Position sowie
+Kraftstofffüllstand (letzterer zusätzlich eine bewusste Scope-Entscheidung -
+siehe `Bridge/FarmPulseBridge.lua` - der Spieler sieht das ohnehin selbst im
+laufenden Spiel).
 
 ## Server-/Sitzungsinfos — bewusst nicht umgesetzt
 

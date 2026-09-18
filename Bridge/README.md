@@ -11,23 +11,27 @@ Aenderungsfrequenz statt eines einzigen monolithischen Schnappschusses:
 - **`world.json`** (seltener, "was mir gehoert" jenseits des Kontostands):
   Feld-/Farmland-Informationen fuer **alle** Felder der Karte (inkl.
   optionaler Anbaudaten - Fruchtart, Wachstumsfortschritt, Ertragsschaetzung -
-  fuer die Ertragsprognose im Frontend), aggregierter Fuhrpark-Wert,
-  Lager-/Silobestaende (inkl. aktuellem Marktpreis sowie bestem Preis +
-  Periode der letzten 12 FS25-Perioden je Fill-Typ).
+  fuer die Ertragsprognose im Frontend), aggregierter Fuhrpark-Wert samt einer
+  Liste einzelner Fahrzeuge (Name, Kategorie, PS, Betriebsstunden, Zustand,
+  Eigentumsstatus, Verkaufspreis), Lager-/Silobestaende (inkl. aktuellem Marktpreis sowie
+  bestem Preis + Periode der letzten 12 FS25-Perioden je Fill-Typ).
 - **`farm.json`** (einmalig bei Aktivierung, aendert sich praktisch nie):
   Hofname, Spielername.
 
 Bewusst **nicht** exportiert - diese Entscheidungen wurden explizit im
-Projekt getroffen, nicht vergessen: Fahrzeugzustand (Tankfuellung, Verschleiss
-- beobachtet der Spieler ohnehin selbst im laufenden Spiel; einzig der
-aggregierte Vermoegenswert des Fuhrparks ist als `fleetValue` relevant),
-Tiere, Vertraege/Missionen, Kredite/Schulden (diese Logik uebernimmt
-FarmPulse Core vollstaendig, statt die Ingame-Kreditlogik zu spiegeln), sowie
-jede Form von Verlauf/Historie (das Spiel selbst bzw. Core fuehren Buch, die
-Bridge liefert nur Momentaufnahmen). Anbaudaten je Feld waren urspruenglich
-ebenfalls aus dieser Liste ("bei `fields` geht es nur um Besitz, nicht um
-Bewirtschaftung") - diese Entscheidung wurde fuer die Ertragsprognose im
-Frontend bewusst revidiert (siehe Tabelle unten).
+Projekt getroffen, nicht vergessen: Kraftstofffuellstand je Fahrzeug
+(beobachtet der Spieler ohnehin selbst im laufenden Spiel), Tiere,
+Vertraege/Missionen, Kredite/Schulden (diese Logik uebernimmt FarmPulse Core
+vollstaendig, statt die Ingame-Kreditlogik zu spiegeln), sowie jede Form von
+Verlauf/Historie (das Spiel selbst bzw. Core fuehren Buch, die Bridge liefert
+nur Momentaufnahmen). Anbaudaten je Feld waren urspruenglich ebenfalls aus
+dieser Liste ("bei `fields` geht es nur um Besitz, nicht um Bewirtschaftung")
+- diese Entscheidung wurde fuer die Ertragsprognose im Frontend bewusst
+revidiert (siehe Tabelle unten). Einzelfahrzeug-Zustand (Verschleiss/Schaden)
+war ebenfalls urspruenglich bewusst ausgeschlossen ("einzig der aggregierte
+Vermoegenswert des Fuhrparks ist als `fleetValue` relevant") - auch diese
+Entscheidung wurde fuer eine eigene Fuhrpark-Uebersicht im Frontend revidiert
+(siehe Abschnitt "Fuhrpark-Details" sowie Tabelle unten).
 
 ## Wichtiger Hinweis zur Vertrauenswuerdigkeit dieses Codes
 
@@ -91,7 +95,13 @@ kam zusaetzlich eine weitere Quelle dazu (siehe Tabelle unten):
 9. **[fs25-lua-api](https://github.com/MyGameSteamOfficial/fs25-lua-api)** (MyGameSteamOfficial) - ein Dump von
    `dataS/scripts` aus FS25 selbst (886 Lua-Dateien; Funktionsrumpfe teils von
    GIANTS entfernt, Aufrufstellen aber intakt) - fuer `Field`/`FieldManager`/
-   `FieldState`/`FruitTypeDesc` als echter, wenn auch nicht offiziell
+   `FieldState`/`FruitTypeDesc`, spaeter zusaetzlich fuer die Fuhrpark-Details
+   fuer `vehicles/Vehicle.lua` (`getFullName()`/`getOperatingTime()`/
+   `getSellPrice()`/`calculateSellPrice()`/`getPropertyState()`) sowie
+   `vehicles/specializations/Wearable.lua` (`getDamageAmount()`),
+   `vehicles/specializations/Motorized.lua` (`getSpecValuePower()`) und
+   `shop/StoreManager.lua` (`addCategory()`/`getCategoryByName()` fuer den
+   lokalisierten Kategorie-Anzeigenamen), als echter, wenn auch nicht offiziell
    dokumentierter Basisspiel-Quellcode.
 
 Fuer Marktpreise (aktueller Preis, Preishistorie je Fill-Typ) kamen zwei
@@ -133,7 +143,14 @@ weitere Quellen dazu:
 | Ertragsschaetzung (`estimatedYieldLiters`) | `g_fruitTypeManager:getFruitTypeByIndex(fruitTypeIndex)` -> `.literPerSqm`/`.minHarvestingGrowthState`/`:getIsHarvestable(growthState)`, verrechnet mit `field:getAreaHa()` (siehe `FieldCollector.computeCropInfo()` fuer die Formel) | **Bestaetigt** (Quelle 2 offizielle LUADOC `FruitTypeDesc.md` fuer `literPerSqm`/`getIsHarvestable`/etc., Quelle 9 fuer `field:getAreaHa()` in Basisspiel-Code). Die konkrete Ertragsformel selbst (Flaeche × Literwert × Wachstumsfortschritt) ist eine eigene, aus bestaetigten Bausteinen abgeleitete Naeherung - das tatsaechliche Ingame-Ergebnis beim Dreschen beruecksichtigt zusaetzlich Spritz-/Pflug-/Walz-/Unkraut-Faktoren (`FieldState:getHarvestScaleMultiplier()`), die hier bewusst NICHT nachgebildet werden |
 | Hofname (`farmName`) | `g_farmManager:getFarmById(farmId).name` | **Bestaetigt** (Quelle 4, FS25_InfoDisplayExtension, echter veroeffentlichter Mod): liest `owningFarm.name` auf demselben Farm-Objekt, das diese Bridge bereits fuer `getBalance()` verwendet |
 | Spielername (`playerName`) | `g_currentMission.playerNickname` | **Bestaetigt** (Quelle 5, FS25_Tardis, echter veroeffentlichter Mod): referenziert dieses Feld direkt |
-| Fuhrpark-Wert (`fleetValue`) | `g_currentMission.vehicleSystem.vehicles` (Liste aller Fahrzeuge), je Eintrag `vehicle:getOwnerFarmId()` zum Filtern + `vehicle:getSellPrice()`, aufsummiert | **Bestaetigt** (Quelle 5, FS25_Tardis, und ein weiterer veroeffentlichter Mod, FS25_VehicleExplorer von teknogeek, fuer `g_currentMission.vehicleSystem.vehicles` als Fahrzeugliste dieser FS25-Engine-Generation - abgeloest gegenueber `g_currentMission.vehicles` aus FS19-FS22 -, Quelle 6 fuer `Vehicle:getSellPrice()` als real gehookte Methode). Bewusst nur der aggregierte Wert, keine Einzelfahrzeug-Details (siehe Einleitung) |
+| Fuhrpark-Wert (`fleetValue`) | `g_currentMission.vehicleSystem.vehicles` (Liste aller Fahrzeuge), je Eintrag `vehicle:getOwnerFarmId()` zum Filtern + `vehicle:getSellPrice()`, aufsummiert | **Bestaetigt** (Quelle 5, FS25_Tardis, und ein weiterer veroeffentlichter Mod, FS25_VehicleExplorer von teknogeek, fuer `g_currentMission.vehicleSystem.vehicles` als Fahrzeugliste dieser FS25-Engine-Generation - abgeloest gegenueber `g_currentMission.vehicles` aus FS19-FS22 -, Quelle 6 fuer `Vehicle:getSellPrice()` als real gehookte Methode) |
+| Fahrzeugname (`vehicles[].name`) | `vehicle:getFullName()` | **Bestaetigt**: gegen den dekompilierten Basisspiel-Quellcode (Quelle 9, `vehicles/Vehicle.lua`, Funktion `Vehicle:getFullName()`) UND unabhaengig gegen einen echten, veroeffentlichten Mod (`Templeton-Peck/FS25_CabCinematic`, der `vehicle:getFullName()` fuer Logging nutzt) geprueft - liefert Markenname + Modellname (z.B. "John Deere 8R 410"), NICHT den vom Spieler ggf. vergebenen individuellen Fahrzeugnamen (dafuer gibt es in FS25 keine bestaetigte separate API) |
+| Fahrzeugkategorie (`vehicles[].category`) | `g_storeManager:getItemByXMLFilename(vehicle.configFileName).categoryName` -> `g_storeManager:getCategoryByName(categoryName).title` | **Bestaetigt** (Quelle 9, `vehicles/Vehicle.lua`, Funktion `Vehicle:saveStatsToXMLFile()`, sowie `shop/StoreManager.lua`, Funktionen `StoreManager:addCategory()`/`StoreManager:getCategoryByName()`): `storeItem.categoryName` ist derselbe rohe, interne Kategorie-Schluessel, den `saveStatsToXMLFile()` fuer die Statistik-Ablage verwendet - roh waere das aber kein Anzeige-String (z.B. `"tractorsL"` statt "Traktoren"), deshalb zusaetzlich ueber `getCategoryByName(...).title` aufgeloest, das `StoreManager:addCategory()` nachweislich mit dem lokalisierten, im Shop angezeigten Titel befuellt. Fallback auf den rohen Schluessel, falls die Kategorie selbst nicht aufloesbar ist |
+| Fahrzeug-PS (`vehicles[].horsepowerHp`) | `g_storeManager:getItemByXMLFilename(vehicle.configFileName)` -> `StoreItemUtil.loadSpecsFromXML(storeItem)` -> `storeItem.specs.power` | **Bestaetigt, Einheit HERGELEITET** (Quelle 9, `vehicles/Vehicle.lua`, Funktion `Vehicle.calculateSellPrice()`, sowie `vehicles/specializations/Motorized.lua`, Funktion `Motorized.getSpecValuePower()`): der Lesezugriff selbst ist echter, im Spiel verwendeter Basisspiel-Code. Die Einheit (das Spiel zeigt diesen Wert im Shop typischerweise als "PS"/"hp" an, je nach Sprache) konnte mangels Zugriffs auf die l10n-Textdateien NICHT gegen den exakten Anzeige-Text verifiziert werden - falls FS25 hier tatsaechlich kW liefern sollte, waere eine Umrechnung (`× 1.35962`) noetig, die diese Bridge bewusst NICHT vornimmt, um keine unbestaetigte Annahme in eine unsichtbare Umrechnung zu verstecken. Fahrzeuge ohne Motor-Konfiguration (z.B. Anhaenger) liefern `nil`/`null`, statt `0` zu erfinden |
+| Betriebsstunden (`vehicles[].operatingHours`) | `vehicle:getOperatingTime()`, in Millisekunden, umgerechnet in Stunden (`/ (1000*60*60)`) | **Bestaetigt** (Quelle 9, `vehicles/Vehicle.lua`): `Vehicle:getOperatingTime()` liefert direkt `self.operatingTime` (Millisekunden); dieselbe Umrechnung verwendet die Engine selbst in `Vehicle.getSpecValueOperatingTime()` fuer die Shop-Anzeige ("Betriebsstunden") |
+| Fahrzeugzustand (`vehicles[].conditionPercent`) | `vehicle:getDamageAmount()` (0..1, Schaden), umgerechnet zu `(1 - damageAmount) * 100` (Prozent Zustand, nicht Schaden) | **Bestaetigt** (Quelle 9, `vehicles/specializations/Wearable.lua`, Funktion `Wearable:getDamageAmount()`): dieselbe Basisspiel-Methode wird intern u.a. fuer die Schadensanzeige-Prozentzahl verwendet (`realItem:getDamageAmount() * 100` im selben Modul). Bewusst als "Zustand" (100% = neuwertig) statt als "Schaden" exportiert, da fuer eine Fuhrpark-**Uebersicht** intuitiver |
+| Eigentumsstatus (`vehicles[].ownershipStatus`) | `vehicle:getPropertyState()`, verglichen mit `VehiclePropertyState.OWNED`/`.LEASED`/`.MISSION`/`.SHOP_CONFIG` | **Bestaetigt** (Quelle 9, `vehicles/Vehicle.lua`, Funktion `Vehicle:getPropertyState()` sowie mehrere echte Vergleichsstellen gegen `VehiclePropertyState.OWNED`/`.LEASED`/`.SHOP_CONFIG` im selben Modul; `VehiclePropertyState.MISSION` zusaetzlich in `vehicles/specializations/Wearable.lua` referenziert): alle vier Konstanten sind echte, im Basisspiel-Quellcode verwendete Werte. Die `VehiclePropertyState`-Klasse selbst ist von GIANTS nicht im SDK-Dump enthalten (kein `getName()`-Hilfsmethode gefunden) - die Bridge bildet die vier bekannten Konstanten deshalb selbst auf lesbare Strings ab, unbekannte/zukuenftige Werte werden zu `"UNKNOWN"`. `SHOP_CONFIG` sollte in `g_currentMission.vehicleSystem.vehicles` praktisch nie vorkommen (nur Shop-Vorschauobjekte), wird aber der Vollstaendigkeit halber unterstuetzt |
+| Verkaufspreis je Fahrzeug (`vehicles[].sellPrice`) | `vehicle:getSellPrice()` | **Bestaetigt** (Quelle 6, FS25_UsedPlus, sowie zusaetzlich Quelle 9, `vehicles/Vehicle.lua`, Funktion `Vehicle:getSellPrice()`/`Vehicle.calculateSellPrice()` als echter Basisspiel-Quellcode fuer dieselbe Methode) - bereits zuvor fuer `fleetValue` verwendet, jetzt zusaetzlich je Fahrzeug einzeln exportiert |
 | Lager-/Silobestaende (`storages`) | Zwei Quellen kombiniert: (1) `g_currentMission.productionChainManager.productionPoints`, je Punkt `.storage.fillLevels`/`.storage.capacities`; (2) `g_currentMission.placeableSystem.placeables`, gefiltert nach `.spec_silo`, je Silo-Objekt in `.spec_silo.storages` ebenfalls `.fillLevels`/`.capacities`/`.capacity` - jeweils indiziert nach Fill-Typ, aufgeloest ueber `g_fillTypeManager:getFillTypeNameByIndex()` | **Bestaetigt** (Quelle 7, FS25_UpgradableFactories, fuer die Produktionspunkt-Struktur; Quelle 12, FS25_AdjustStorageCapacity, echter veroeffentlichter Mod, fuer `placeable.spec_silo.storages` als Struktur frei platzierter Hof-Silos). **Korrektur**: eine fruehere Fassung dieser Bridge deckte ausschliesslich Produktionspunkte ab - `amount` blieb dadurch fuer alle Fill-Typen `0`, sobald die Ernte (wie beim Regelfall der meisten Hoefe) in frei platzierten Silos statt in Produktionspunkten lagerte, waehrend `capacity` durchaus befuellt sein konnte, falls ein Produktionspunkt mit derselben Fill-Typ-Liste existierte |
 | Temperatur (`temperature`) | `g_currentMission.environment.weather:getCurrentTemperature()` | **Bestaetigt** (Quelle 5 FS25_Tardis-Umfeld sowie Basisspiel-Skripte): mehrere echte FS25-Basisspiel-Skripte (`vehicles/specializations/Washable.lua`, `vehicles/VehicleSystem.lua`, `vehicles/specializations/Enterable.lua` - dort direkt an die Cockpit-Aussentemperaturanzeige gebunden) lesen an exakt dieser Stelle dieselbe Methode |
 | Wettertyp (`weatherType`) | Strategie 1: `weather.forecast:dataForTime(environment.currentMonotonicDay, environment.dayTime)` -> `weather:getWeatherObjectByIndex(season, objectIndex)` -> `WeatherType.getName(weatherObject.weatherType)`. Strategie 2 (Fallback): grobe Ableitung aus `weather:getIsHailing()`/`getIsSnowing()`/`getIsRaining()` | Strategie 1 **hergeleitet, nicht bestaetigt** (Quelle 8): Die `Weather`-Klasse selbst ist von GIANTS weder im SDK-Dump noch in der LUADOC offengelegt: die Aufrufkette wurde stattdessen aus echtem HUD-Nachbau-Code (Quelle 8) uebernommen. Die `WeatherType`-Konstanten (`SUN`/`PARTIALLY_CLOUDY`/`CLOUDY`/`RAIN`/`SNOW`/`HAIL`/`TWISTER`/`THUNDER`) selbst sind dagegen **bestaetigt** (Basisspiel `gui/hud/GameInfoDisplay.lua`). Strategie 2 nutzt ausschliesslich **bestaetigte** Einzelmethoden (Basisspiel `objects/SunAdmirer.lua`, `placeables/BeehiveSystem.lua`), liefert dafuer nur eine grobe Naeherung ohne "bewoelkt"/"Gewitter"/"Tornado" |
@@ -203,6 +220,12 @@ Bridge abstuerzt. Das Verhalten laesst sich also risikofrei ausprobieren.
   die erste Preishistorie eines neuen Spielstands ggf. noch nicht vollstaendig
   befuellt (nur bereits durchlaufene Perioden haben einen Wert) - das ist kein
   Bug, sondern der erwartete Zustand kurz nach Spielstart.
+- **`vehicles[].horsepowerHp`** koennte in einer falschen Einheit vorliegen
+  (siehe Tabelle oben): der Lesezugriff (`storeItem.specs.power`) selbst ist
+  bestaetigter Basisspiel-Code, die Einheit (PS/hp vs. kW) konnte mangels
+  Zugriffs auf die l10n-Textdateien aber nicht verifiziert werden. Sollte sich
+  im Live-Test zeigen, dass der exportierte Wert nicht zur Ingame-Shop-Anzeige
+  passt, ist das der erste Verdacht (Faktor ~1.36 zwischen PS und kW).
 
 ## Test-Feedback-Loop (bitte einmal durchfuehren)
 
@@ -236,9 +259,19 @@ Bridge abstuerzt. Das Verhalten laesst sich also risikofrei ausprobieren.
    fuer ein paar bekannte, bereits gekaufte Felder mit der Ingame-Kartenansicht
    uebereinstimmen.
 7. In `world.json` pruefen, ob `fleetValue` grob zur Anzahl/Klasse der
-   eigenen Fahrzeuge passt, und ob `storages` bekannte Lagerbestaende (sowohl
-   aus Produktionspunkten als auch aus frei platzierten Hof-Silos) korrekt
+   eigenen Fahrzeuge passt, ob `vehicles` alle eigenen Fahrzeuge enthaelt
+   (Anzahl, Namen) und ob `storages` bekannte Lagerbestaende (sowohl aus
+   Produktionspunkten als auch aus frei platzierten Hof-Silos) korrekt
    widerspiegelt.
+7a. In `world.json` bei einem bekannten Fahrzeug pruefen, ob `horsepowerHp`
+    zur im Shop/Kaufmenue angezeigten PS-Zahl passt (siehe Abschnitt "Bekannte
+    Luecken" zur Einheiten-Unsicherheit), ob `operatingHours` zu den im Spiel
+    angezeigten Betriebsstunden passt, ob `conditionPercent` grob zum
+    sichtbaren Fahrzeugzustand (Schadensanzeige) passt - `100 - conditionPercent`
+    sollte dem angezeigten Schadensprozentwert entsprechen -, ob `category`
+    zur im Shop angezeigten Fahrzeugkategorie passt (z.B. "Traktoren") und ob
+    `ownershipStatus` bei einem gekauften Fahrzeug `"OWNED"` und bei einem
+    geleasten Fahrzeug `"LEASED"` liefert.
 7b. In `world.json` bei einem bekannt bestellten Feld pruefen, ob `fruitType`
     zur im Spiel angezeigten Frucht passt und `growthState` grob zum
     sichtbaren Wachstumsstand (0 = gerade gesaet, 1 = erntereif). Bleiben
@@ -326,6 +359,14 @@ sondern per JSON-Parser auf die benannten Felder zugreifen.
 ```json
 {
   "fleetValue": 125000,
+  "vehicles": [
+    { "name": "John Deere 8R 410", "category": "Traktoren", "horsepowerHp": 410,
+      "operatingHours": 128.50, "conditionPercent": 92, "ownershipStatus": "OWNED",
+      "sellPrice": 245000 },
+    { "name": "Kroger Agroliner TAW 35", "category": "Anhänger", "horsepowerHp": null,
+      "operatingHours": 95.00, "conditionPercent": 88, "ownershipStatus": "LEASED",
+      "sellPrice": 42000 }
+  ],
   "fields": [
     { "fieldId": 1, "ownerFarmId": 0, "sizeHa": 4.53, "price": 32000,
       "fruitType": null, "growthState": null, "estimatedYieldLiters": null },
@@ -344,8 +385,33 @@ sondern per JSON-Parser auf die benannten Felder zugreifen.
 ```
 
 - `fleetValue`: aggregierter Verkaufswert aller Fahrzeuge der aktuellen Farm
-  (Summe von `Vehicle:getSellPrice()`) - **kein** Einzelfahrzeug-Zustand
-  (Tankfuellung, Verschleiss), siehe Einleitung.
+  (Summe von `Vehicle:getSellPrice()`, identisch zur Summe der einzelnen
+  `sellPrice`-Werte in `vehicles`).
+- `vehicles`: Liste der Fahrzeuge der aktuellen Farm (gefiltert nach
+  `vehicle:getOwnerFarmId() == farmId`, siehe `telemetry.json`/`farmId`),
+  sortiert nach Name (bei Gleichstand nach Verkaufspreis absteigend). Jedes
+  Detail-Feld ist einzeln ueber `pcall()` abgesichert (siehe
+  `FarmPulseBridge.readVehicleDetails()`) - schlaegt z.B. nur die PS-Ermittlung
+  fehl, bleiben die uebrigen Felder trotzdem befuellt:
+    - `name`: Markenname + Modellname (`Vehicle:getFullName()`, z.B.
+      `"John Deere 8R 410"`), `"Unbekanntes Fahrzeug"` falls nicht auflösbar.
+    - `category`: lokalisierter Kategorie-Anzeigename (z.B. `"Traktoren"`,
+      `"Anhänger"`), `"Sonstiges"` falls nicht auflösbar.
+    - `horsepowerHp`: Motorleistung, `null` bei nicht-motorisierten Fahrzeugen
+      (z.B. Anhaengern) oder falls nicht auflösbar. Siehe Tabelle oben zur
+      Einschraenkung bei der Einheit (PS/hp vs. evtl. kW).
+    - `operatingHours`: Betriebsstunden des Fahrzeugs (`Vehicle:getOperatingTime()`
+      in Millisekunden, umgerechnet in Stunden), oder `null` falls nicht
+      auflösbar.
+    - `conditionPercent`: Fahrzeugzustand in Prozent (`100` = neuwertig, `0` =
+      maximal beschaedigt; aus `Vehicle:getDamageAmount()` abgeleitet), oder
+      `null` falls nicht auflösbar.
+    - `ownershipStatus`: Eigentumsstatus - einer von `"OWNED"` (gekauft),
+      `"LEASED"` (geleast), `"MISSION"` (im Rahmen eines Vertrags/einer
+      Mission genutzt) oder `"SHOP_CONFIG"` (sollte in der Praxis nicht
+      vorkommen, siehe Tabelle oben), `"UNKNOWN"` falls nicht auflösbar.
+    - `sellPrice`: aktueller Verkaufspreis dieses Fahrzeugs
+      (`Vehicle:getSellPrice()`), `0` falls nicht auflösbar.
 - `fields`: Liste **aller** Felder/Farmlands der geladenen Karte, aufsteigend
   nach `fieldId` sortiert:
     - `fieldId`: eindeutige ID des Feldes/Farmlands.
@@ -430,10 +496,10 @@ cd Bridge
 lua tests/run_tests.lua
 ```
 
-Erwartete Ausgabe: alle Tests `[ OK ]`, am Ende `87 bestanden, 0
-fehlgeschlagen` (16 JsonEncoder, 9 PollTimer, 16 FieldCollector,
-6 VehicleCollector, 7 StorageCollector, 8 PriceCollector, 6 FarmCollector,
-7 WorldCollector, 12 TelemetryCollector). `FarmPulseBridge.lua` selbst hat
+Erwartete Ausgabe: alle Tests `[ OK ]`, am Ende `110 bestanden, 0
+fehlgeschlagen` (16 JsonEncoder, 9 PollTimer, 21 FieldCollector,
+17 VehicleCollector, 7 StorageCollector, 8 PriceCollector, 6 FarmCollector,
+8 WorldCollector, 18 TelemetryCollector). `FarmPulseBridge.lua` selbst hat
 bewusst **keine** automatisierten Tests - es enthaelt ausschliesslich
 GIANTS-Engine-Aufrufe, die sich ausserhalb des laufenden Spiels nicht
 sinnvoll pruefen lassen (siehe Abschnitt "Test-Feedback-Loop" oben).
