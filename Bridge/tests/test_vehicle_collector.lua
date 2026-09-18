@@ -35,15 +35,19 @@ return function()
     testkit.run("normalizeVehicle: uebernimmt und rundet alle Felder", function()
         local vehicle = VehicleCollector.normalizeVehicle({
             name = "John Deere 8R 410",
+            category = "Traktoren",
             horsepowerHp = 410.4,
             operatingHours = 128.456,
             conditionPercent = 91.999,
+            ownershipStatus = "OWNED",
             sellPrice = 245000.4,
         })
         testkit.assertEquals("John Deere 8R 410", vehicle.name)
+        testkit.assertEquals("Traktoren", vehicle.category)
         testkit.assertEquals(410, vehicle.horsepowerHp)
         testkit.assertEquals(128.46, vehicle.operatingHours)
         testkit.assertEquals(92.0, vehicle.conditionPercent)
+        testkit.assertEquals("OWNED", vehicle.ownershipStatus)
         testkit.assertEquals(245000, vehicle.sellPrice)
     end)
 
@@ -51,6 +55,19 @@ return function()
         testkit.assertEquals("Unbekanntes Fahrzeug", VehicleCollector.normalizeVehicle({}).name)
         testkit.assertEquals("Unbekanntes Fahrzeug", VehicleCollector.normalizeVehicle({ name = "   " }).name)
         testkit.assertEquals("Unbekanntes Fahrzeug", VehicleCollector.normalizeVehicle({ name = nil }).name)
+    end)
+
+    testkit.run("normalizeVehicle: fehlende/leere Kategorie wird zum Fallback", function()
+        testkit.assertEquals("Sonstiges", VehicleCollector.normalizeVehicle({}).category)
+        testkit.assertEquals("Sonstiges", VehicleCollector.normalizeVehicle({ category = "  " }).category)
+        testkit.assertEquals("Sonstiges", VehicleCollector.normalizeVehicle({ category = 42 }).category)
+    end)
+
+    testkit.run("normalizeVehicle: unbekannter/fehlender Eigentumsstatus wird zu UNKNOWN", function()
+        testkit.assertEquals("UNKNOWN", VehicleCollector.normalizeVehicle({}).ownershipStatus)
+        testkit.assertEquals("UNKNOWN", VehicleCollector.normalizeVehicle({ ownershipStatus = "GESTOHLEN" }).ownershipStatus)
+        testkit.assertEquals("LEASED", VehicleCollector.normalizeVehicle({ ownershipStatus = "LEASED" }).ownershipStatus)
+        testkit.assertEquals("MISSION", VehicleCollector.normalizeVehicle({ ownershipStatus = "MISSION" }).ownershipStatus)
     end)
 
     testkit.run("normalizeVehicle: nicht lesbare Detailwerte werden zu nil statt 0", function()

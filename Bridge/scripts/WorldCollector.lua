@@ -7,8 +7,9 @@
 
         {
           "fleetValue": 125000,
-          "vehicles": [ { "name": "John Deere 8R 410", "horsepowerHp": 410,
-            "operatingHours": 128.5, "conditionPercent": 92.0, "sellPrice": 245000 } ],
+          "vehicles": [ { "name": "John Deere 8R 410", "category": "Traktoren",
+            "horsepowerHp": 410, "operatingHours": 128.5, "conditionPercent": 92.0,
+            "ownershipStatus": "OWNED", "sellPrice": 245000 } ],
           "fields": [ { "fieldId": 1, "ownerFarmId": 0, "sizeHa": 4.53, "price": 32000 } ],
           "storages": [ { "fillType": "WHEAT", "amount": 5000, "capacity": 20000,
             "currentPricePer1000L": 218.4, "bestPricePer1000L": 254.1,
@@ -68,9 +69,11 @@ function WorldCollector.toJson(payload)
     for i, vehicle in ipairs(payload.vehicles) do
         vehicleEntries[i] = JsonEncoder.encodeObject({
             { key = "name", value = vehicle.name },
+            { key = "category", value = vehicle.category },
             { key = "horsepowerHp", value = vehicle.horsepowerHp },
             { key = "operatingHours", value = vehicle.operatingHours },
             { key = "conditionPercent", value = vehicle.conditionPercent },
+            { key = "ownershipStatus", value = vehicle.ownershipStatus },
             { key = "sellPrice", value = vehicle.sellPrice },
         })
     end

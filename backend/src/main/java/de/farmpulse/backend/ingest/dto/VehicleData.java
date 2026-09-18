@@ -6,8 +6,10 @@ package de.farmpulse.backend.ingest.dto;
  */
 public record VehicleData(
         String name,
+        String category,
         Double horsepowerHp,
         Double operatingHours,
         Double conditionPercent,
+        String ownershipStatus,
         long sellPrice) {
 }

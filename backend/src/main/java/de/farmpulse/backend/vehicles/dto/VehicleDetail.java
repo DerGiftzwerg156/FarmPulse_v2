@@ -9,8 +9,10 @@ package de.farmpulse.backend.vehicles.dto;
  */
 public record VehicleDetail(
         String name,
+        String category,
         Double horsepowerHp,
         Double operatingHours,
         Double conditionPercent,
+        String ownershipStatus,
         long sellPrice) {
 }

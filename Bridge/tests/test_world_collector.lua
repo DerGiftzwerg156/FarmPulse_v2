@@ -56,7 +56,8 @@ return function()
             { id = 1, farmId = 0, areaInHa = 4.53, price = 32000 },
         })
         local vehicles = VehicleCollector.buildVehicles({
-            { name = "John Deere 8R 410", horsepowerHp = 410, operatingHours = 128.5, conditionPercent = 92, sellPrice = 245000 },
+            { name = "John Deere 8R 410", category = "Traktoren", horsepowerHp = 410, operatingHours = 128.5,
+              conditionPercent = 92, ownershipStatus = "OWNED", sellPrice = 245000 },
         })
         local storages = StorageCollector.buildStorages({
             { fillType = "WHEAT", amount = 5000, capacity = 20000 },
@@ -64,8 +65,8 @@ return function()
         local payload = WorldCollector.buildPayload({ fields = fields, vehicles = vehicles, storages = storages, fleetValue = 100 })
         testkit.assertEquals(
             '{"fleetValue":100,'
-                .. '"vehicles":[{"name":"John Deere 8R 410","horsepowerHp":410,'
-                .. '"operatingHours":128.50,"conditionPercent":92,"sellPrice":245000}],'
+                .. '"vehicles":[{"name":"John Deere 8R 410","category":"Traktoren","horsepowerHp":410,'
+                .. '"operatingHours":128.50,"conditionPercent":92,"ownershipStatus":"OWNED","sellPrice":245000}],'
                 .. '"fields":[{"fieldId":1,"ownerFarmId":0,"sizeHa":4.53,"price":32000,'
                 .. '"fruitType":null,"growthState":null,"estimatedYieldLiters":null}],'
                 .. '"storages":[{"fillType":"WHEAT","amount":5000,"capacity":20000,'
@@ -80,8 +81,8 @@ return function()
         local payload = WorldCollector.buildPayload({ vehicles = vehicles, fleetValue = 0 })
         testkit.assertEquals(
             '{"fleetValue":0,'
-                .. '"vehicles":[{"name":"Anhaenger","horsepowerHp":null,'
-                .. '"operatingHours":null,"conditionPercent":null,"sellPrice":0}],'
+                .. '"vehicles":[{"name":"Anhaenger","category":"Sonstiges","horsepowerHp":null,'
+                .. '"operatingHours":null,"conditionPercent":null,"ownershipStatus":"UNKNOWN","sellPrice":0}],'
                 .. '"fields":[],"storages":[]}',
             WorldCollector.toJson(payload)
         )

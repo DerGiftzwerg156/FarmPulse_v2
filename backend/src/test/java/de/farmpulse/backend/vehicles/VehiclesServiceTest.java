@@ -61,8 +61,8 @@ class VehiclesServiceTest {
         when(farmRepository.findTopByOrderByUpdatedAtDesc()).thenReturn(Optional.of(farm));
 
         WorldSnapshot world = new WorldSnapshot(farm, 287_000L, Instant.now(), Instant.now());
-        world.addVehicle(new VehicleSnapshot("John Deere 8R 410", 410.0, 128.5, 92.0, 245_000L));
-        world.addVehicle(new VehicleSnapshot("Anhaenger", null, null, null, 42_000L));
+        world.addVehicle(new VehicleSnapshot("John Deere 8R 410", "Traktoren", 410.0, 128.5, 92.0, "OWNED", 245_000L));
+        world.addVehicle(new VehicleSnapshot("Anhaenger", "Sonstiges", null, null, null, "UNKNOWN", 42_000L));
         when(worldSnapshotRepository.findTopByFarmIdOrderByRecordedAtDesc(1L)).thenReturn(Optional.of(world));
 
         VehiclesResponse response = service.getVehicles();
@@ -72,7 +72,10 @@ class VehiclesServiceTest {
         assertThat(response.averageConditionPercent()).isEqualTo(92.0);
         assertThat(response.items()).hasSize(2);
         assertThat(response.items().get(0).name()).isEqualTo("John Deere 8R 410");
+        assertThat(response.items().get(0).category()).isEqualTo("Traktoren");
         assertThat(response.items().get(0).horsepowerHp()).isEqualTo(410.0);
+        assertThat(response.items().get(0).ownershipStatus()).isEqualTo("OWNED");
         assertThat(response.items().get(1).horsepowerHp()).isNull();
+        assertThat(response.items().get(1).ownershipStatus()).isEqualTo("UNKNOWN");
     }
 }

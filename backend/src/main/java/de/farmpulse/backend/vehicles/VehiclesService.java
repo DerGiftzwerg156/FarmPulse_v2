@@ -60,7 +60,8 @@ public class VehiclesService {
     }
 
     private static VehicleDetail toVehicleDetail(VehicleSnapshot vehicle) {
-        return new VehicleDetail(vehicle.getName(), vehicle.getHorsepowerHp(), vehicle.getOperatingHours(),
-                vehicle.getConditionPercent(), vehicle.getSellPrice());
+        return new VehicleDetail(vehicle.getName(), vehicle.getCategory(), vehicle.getHorsepowerHp(),
+                vehicle.getOperatingHours(), vehicle.getConditionPercent(), vehicle.getOwnershipStatus(),
+                vehicle.getSellPrice());
     }
 }

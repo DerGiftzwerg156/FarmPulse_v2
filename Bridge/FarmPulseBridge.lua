@@ -494,12 +494,13 @@ function FarmPulseBridge.readPlayerName()
     return nil, "fallback-nil"
 end
 
---- Liest je Fahrzeug der aktuellen Farm einen rohen Detail-Datensatz (Name, PS,
--- Betriebsstunden, Zustand, Verkaufspreis) fuer die "vehicles"-Liste sowie den
--- aggregierten Fuhrpark-Wert "fleetValue" (siehe VehicleCollector). Einzelne
--- Fahrzeug-Verbrauchsdaten (Kraftstofffuellstand) werden weiterhin bewusst
--- NICHT gelesen, siehe Dateikommentar/README.md - die beobachtet der Spieler
--- ohnehin selbst im laufenden Spiel.
+--- Liest je Fahrzeug der aktuellen Farm einen rohen Detail-Datensatz (Name,
+-- Kategorie, PS, Betriebsstunden, Zustand, Eigentumsstatus, Verkaufspreis)
+-- fuer die "vehicles"-Liste sowie den aggregierten Fuhrpark-Wert "fleetValue"
+-- (siehe VehicleCollector). Einzelne Fahrzeug-Verbrauchsdaten
+-- (Kraftstofffuellstand) werden weiterhin bewusst NICHT gelesen, siehe
+-- Dateikommentar/README.md - die beobachtet der Spieler ohnehin selbst im
+-- laufenden Spiel.
 --
 -- Jedes Detail-Feld ist einzeln ueber pcall() abgesichert: schlaegt z.B. nur
 -- die PS-Ermittlung fehl (z.B. bei einem nicht-motorisierten Anhaenger ohne
@@ -510,18 +511,26 @@ end
 -- dekompilierten FS25-Basisspiel-Quellcode geprueft (Quelle 9,
 -- vehicles/Vehicle.lua): Vehicle:getFullName() (Name inkl. Marke),
 -- Vehicle:getOperatingTime() (Betriebszeit in Millisekunden, self.operatingTime),
--- Vehicle:getSellPrice() (bereits bestehend, siehe unten) sowie
+-- Vehicle:getSellPrice() (bereits bestehend, siehe unten), Vehicle:getPropertyState()
+-- (Eigentumsstatus, vgl. VehiclePropertyState.OWNED/.LEASED/.MISSION/.SHOP_CONFIG,
+-- alle vier als echte Konstanten in Vehicle.lua/Wearable.lua referenziert) sowie
 -- Vehicle:getDamageAmount() (vehicles/specializations/Wearable.lua, 0..1) sind
--- allesamt echte, im Basisspiel-Quellcode vorhandene Methoden. Der PS-Wert
--- (storeItem.specs.power) ist HERGELEITET: Vehicle.calculateSellPrice() liest
--- exakt dieses Feld ueber denselben g_storeManager:getItemByXMLFilename() +
--- StoreItemUtil.loadSpecsFromXML()-Zugriff, die Einheit (PS vs. kW) selbst
--- konnte nicht gegen die l10n-Textdateien verifiziert werden - siehe README.md
--- fuer die Einschraenkung.
+-- allesamt echte, im Basisspiel-Quellcode vorhandene Methoden. Ebenfalls
+-- BESTAETIGT: die Fahrzeugkategorie ueber denselben g_storeManager:getItemByXMLFilename()-
+-- Zugriff wie beim PS-Wert - storeItem.categoryName wird in Vehicle.lua
+-- (saveStatsToXMLFile) fuer denselben Zweck gelesen, und g_storeManager:getCategoryByName(...).title
+-- (shop/StoreManager.lua, StoreManager:addCategory()) liefert daraus den
+-- lokalisierten Anzeigenamen (z.B. "Traktoren") statt des rohen internen
+-- Kategorie-Schluessels. Der PS-Wert (storeItem.specs.power) ist HERGELEITET:
+-- Vehicle.calculateSellPrice() liest exakt dieses Feld ueber denselben
+-- g_storeManager:getItemByXMLFilename() + StoreItemUtil.loadSpecsFromXML()-Zugriff,
+-- die Einheit (PS vs. kW) selbst konnte nicht gegen die l10n-Textdateien
+-- verifiziert werden - siehe README.md fuer die Einschraenkung.
 -- @param farmId FarmID, siehe readFarmId()
--- @return Liste roher {name, horsepowerHp, operatingHours, conditionPercent,
---         sellPrice}-Tabellen (leer, falls g_currentMission.vehicleSystem
---         nicht verfuegbar ist oder der Zugriff fehlschlaegt)
+-- @return Liste roher {name, category, horsepowerHp, operatingHours,
+--         conditionPercent, ownershipStatus, sellPrice}-Tabellen (leer, falls
+--         g_currentMission.vehicleSystem nicht verfuegbar ist oder der
+--         Zugriff fehlschlaegt)
 function FarmPulseBridge.readVehicles(farmId)
     local vehicles = {}
 
@@ -545,9 +554,9 @@ end
 
 --- Liest die rohen Detailwerte eines einzelnen Fahrzeugs, siehe readVehicles().
 -- @param vehicle Fahrzeugobjekt aus g_currentMission.vehicleSystem.vehicles
--- @return rohe {name, horsepowerHp, operatingHours, conditionPercent,
---         sellPrice}-Tabelle (einzelne Felder nil, falls der jeweilige
---         Lesezugriff fehlschlaegt)
+-- @return rohe {name, category, horsepowerHp, operatingHours, conditionPercent,
+--         ownershipStatus, sellPrice}-Tabelle (einzelne Felder nil, falls der
+--         jeweilige Lesezugriff fehlschlaegt)
 function FarmPulseBridge.readVehicleDetails(vehicle)
     local nameOk, name = pcall(function() return vehicle:getFullName() end)
     if not nameOk then
@@ -556,15 +565,39 @@ function FarmPulseBridge.readVehicleDetails(vehicle)
     end
 
     local horsepowerHp = nil
-    local powerOk = pcall(function()
+    local category = nil
+    local specsOk = pcall(function()
         local storeItem = g_storeManager:getItemByXMLFilename(vehicle.configFileName)
         if storeItem ~= nil then
             StoreItemUtil.loadSpecsFromXML(storeItem)
             horsepowerHp = storeItem.specs.power
+
+            local storeCategory = g_storeManager:getCategoryByName(storeItem.categoryName)
+            if storeCategory ~= nil then
+                category = storeCategory.title
+            else
+                category = storeItem.categoryName
+            end
         end
     end)
-    if not powerOk then
-        FarmPulseBridge.log("WARNUNG: Konnte PS-Wert eines Fahrzeugs nicht ueber g_storeManager lesen.")
+    if not specsOk then
+        FarmPulseBridge.log("WARNUNG: Konnte PS-Wert/Kategorie eines Fahrzeugs nicht ueber g_storeManager lesen.")
+    end
+
+    local ownershipStatus = nil
+    local propertyStateOk, propertyState = pcall(function() return vehicle:getPropertyState() end)
+    if propertyStateOk then
+        if propertyState == VehiclePropertyState.OWNED then
+            ownershipStatus = "OWNED"
+        elseif propertyState == VehiclePropertyState.LEASED then
+            ownershipStatus = "LEASED"
+        elseif propertyState == VehiclePropertyState.MISSION then
+            ownershipStatus = "MISSION"
+        elseif propertyState == VehiclePropertyState.SHOP_CONFIG then
+            ownershipStatus = "SHOP_CONFIG"
+        end
+    else
+        FarmPulseBridge.log("WARNUNG: Konnte Eigentumsstatus eines Fahrzeugs nicht ueber getPropertyState() lesen.")
     end
 
     local operatingHours = nil
@@ -591,9 +624,11 @@ function FarmPulseBridge.readVehicleDetails(vehicle)
 
     return {
         name = name,
+        category = category,
         horsepowerHp = horsepowerHp,
         operatingHours = operatingHours,
         conditionPercent = conditionPercent,
+        ownershipStatus = ownershipStatus,
         sellPrice = sellPrice,
     }
 end

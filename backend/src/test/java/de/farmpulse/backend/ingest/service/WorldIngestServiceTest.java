@@ -65,8 +65,8 @@ class WorldIngestServiceTest {
     void bildetFelderUndLagerbestaendeAufDenSnapshotAb() {
         WorldData data = new WorldData(
                 125000,
-                List.of(new VehicleData("John Deere 8R 410", 410.0, 128.5, 92.0, 245000),
-                        new VehicleData("Anhaenger", null, null, null, 0)),
+                List.of(new VehicleData("John Deere 8R 410", "Traktoren", 410.0, 128.5, 92.0, "OWNED", 245000),
+                        new VehicleData("Anhaenger", "Sonstiges", null, null, null, "UNKNOWN", 0)),
                 List.of(new FieldData(1, 1, 4.53, 32000, "WHEAT", 0.5, 15862.5),
                         new FieldData(2, 0, 6.10, 45000, null, null, null)),
                 List.of(new StorageData("BARLEY", 1200, 20000, 175.2, 198.5, 7, "Juli"),
@@ -92,11 +92,14 @@ class WorldIngestServiceTest {
         assertThat(snapshot.getVehicles()).hasSize(2);
         assertThat(snapshot.getVehicles().get(0).getName()).isEqualTo("John Deere 8R 410");
         assertThat(snapshot.getVehicles().get(0).getWorldSnapshot()).isSameAs(snapshot);
+        assertThat(snapshot.getVehicles().get(0).getCategory()).isEqualTo("Traktoren");
         assertThat(snapshot.getVehicles().get(0).getHorsepowerHp()).isEqualTo(410.0);
         assertThat(snapshot.getVehicles().get(0).getOperatingHours()).isEqualTo(128.5);
         assertThat(snapshot.getVehicles().get(0).getConditionPercent()).isEqualTo(92.0);
+        assertThat(snapshot.getVehicles().get(0).getOwnershipStatus()).isEqualTo("OWNED");
         assertThat(snapshot.getVehicles().get(0).getSellPrice()).isEqualTo(245000);
         assertThat(snapshot.getVehicles().get(1).getHorsepowerHp()).isNull();
+        assertThat(snapshot.getVehicles().get(1).getOwnershipStatus()).isEqualTo("UNKNOWN");
         assertThat(snapshot.getVehicles().get(1).getSellPrice()).isEqualTo(0);
         assertThat(snapshot.getStorages()).hasSize(2);
         assertThat(snapshot.getStorages().get(1).getFillType()).isEqualTo("WHEAT");

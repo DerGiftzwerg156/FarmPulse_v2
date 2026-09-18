@@ -1,3 +1,5 @@
+import { VehicleOwnershipStatus } from '../models/vehicles.model';
+
 export type VehicleCondition = 'GOOD' | 'FAIR' | 'POOR' | 'UNKNOWN';
 
 interface VehicleConditionInfo {
@@ -37,4 +39,25 @@ export function vehicleConditionLabel(vehicle: VehicleConditionInfo): string {
 
 export function vehicleConditionPercentRounded(vehicle: VehicleConditionInfo): number {
   return Math.round(vehicle.conditionPercent ?? 0);
+}
+
+/**
+ * Eigentumsstatus-Label, siehe Bridge/README.md fuer die Herkunft der vier
+ * bekannten Werte (VehiclePropertyState.OWNED/.LEASED/.MISSION/.SHOP_CONFIG).
+ * SHOP_CONFIG sollte in der Praxis nicht vorkommen (nur Shop-Vorschauobjekte),
+ * wird hier dennoch beschriftet statt als UNKNOWN zu erscheinen.
+ */
+export function vehicleOwnershipLabel(status: VehicleOwnershipStatus): string {
+  switch (status) {
+    case 'OWNED':
+      return 'Gekauft';
+    case 'LEASED':
+      return 'Geleast';
+    case 'MISSION':
+      return 'Vertrag';
+    case 'SHOP_CONFIG':
+      return 'Shop';
+    default:
+      return 'Unbekannt';
+  }
 }

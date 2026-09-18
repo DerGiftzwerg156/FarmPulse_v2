@@ -68,19 +68,25 @@ fleet_value=125000
 # einer simulierten Reparatur wieder auf 100% zurueckgesetzt - kein echtes
 # Verschleissmodell, nur zu Demo-/Testzwecken.
 vehicle1_name="John Deere 8R 410"
+vehicle1_category="Traktoren"
 vehicle1_hp=410
 vehicle1_hours=128.5
 vehicle1_condition=92.0
+vehicle1_ownership="OWNED"
 vehicle1_price=245000
 vehicle2_name="Fendt 942 Vario"
+vehicle2_category="Traktoren"
 vehicle2_hp=421
 vehicle2_hours=340.2
 vehicle2_condition=76.5
+vehicle2_ownership="LEASED"
 vehicle2_price=198000
 vehicle3_name="Kroger Agroliner TAW 35"
+vehicle3_category="Anhänger"
 vehicle3_hp=0
 vehicle3_hours=95.0
 vehicle3_condition=88.0
+vehicle3_ownership="OWNED"
 vehicle3_price=42000
 wheat_amount=5000
 wheat_capacity=20000
@@ -142,7 +148,7 @@ write_world() {
     fi
 
     cat > "${tmp_file}" <<JSON
-{"fleetValue":${fleet_value},"vehicles":[{"name":"${vehicle1_name}","horsepowerHp":${vehicle1_hp},"operatingHours":${vehicle1_hours},"conditionPercent":${vehicle1_condition},"sellPrice":${vehicle1_price}},{"name":"${vehicle2_name}","horsepowerHp":${vehicle2_hp},"operatingHours":${vehicle2_hours},"conditionPercent":${vehicle2_condition},"sellPrice":${vehicle2_price}},{"name":"${vehicle3_name}","horsepowerHp":${vehicle3_hp_json},"operatingHours":${vehicle3_hours},"conditionPercent":${vehicle3_condition},"sellPrice":${vehicle3_price}}],"fields":[{"fieldId":1,"ownerFarmId":${farm_id},"sizeHa":${field1_area_ha},"price":32000,"fruitType":"${field1_fruit}","growthState":${field1_growth},"estimatedYieldLiters":${field1_yield}},{"fieldId":2,"ownerFarmId":${farm_id},"sizeHa":${field2_area_ha},"price":45000,"fruitType":"${field2_fruit}","growthState":${field2_growth},"estimatedYieldLiters":${field2_yield}},{"fieldId":3,"ownerFarmId":0,"sizeHa":3.2,"price":28000,"fruitType":null,"growthState":null,"estimatedYieldLiters":null}],"storages":[{"fillType":"BARLEY","amount":${barley_amount},"capacity":${barley_capacity},"currentPricePer1000L":${barley_price_per_1000l},"bestPricePer1000L":${barley_best_price_per_1000l},"bestPricePeriod":${barley_best_price_period},"bestPricePeriodLabel":"${MONTH_NAMES[$((barley_best_price_period - 1))]}"},{"fillType":"WHEAT","amount":${wheat_amount},"capacity":${wheat_capacity},"currentPricePer1000L":${wheat_price_per_1000l},"bestPricePer1000L":${wheat_best_price_per_1000l},"bestPricePeriod":${wheat_best_price_period},"bestPricePeriodLabel":"${MONTH_NAMES[$((wheat_best_price_period - 1))]}"}]}
+{"fleetValue":${fleet_value},"vehicles":[{"name":"${vehicle1_name}","category":"${vehicle1_category}","horsepowerHp":${vehicle1_hp},"operatingHours":${vehicle1_hours},"conditionPercent":${vehicle1_condition},"ownershipStatus":"${vehicle1_ownership}","sellPrice":${vehicle1_price}},{"name":"${vehicle2_name}","category":"${vehicle2_category}","horsepowerHp":${vehicle2_hp},"operatingHours":${vehicle2_hours},"conditionPercent":${vehicle2_condition},"ownershipStatus":"${vehicle2_ownership}","sellPrice":${vehicle2_price}},{"name":"${vehicle3_name}","category":"${vehicle3_category}","horsepowerHp":${vehicle3_hp_json},"operatingHours":${vehicle3_hours},"conditionPercent":${vehicle3_condition},"ownershipStatus":"${vehicle3_ownership}","sellPrice":${vehicle3_price}}],"fields":[{"fieldId":1,"ownerFarmId":${farm_id},"sizeHa":${field1_area_ha},"price":32000,"fruitType":"${field1_fruit}","growthState":${field1_growth},"estimatedYieldLiters":${field1_yield}},{"fieldId":2,"ownerFarmId":${farm_id},"sizeHa":${field2_area_ha},"price":45000,"fruitType":"${field2_fruit}","growthState":${field2_growth},"estimatedYieldLiters":${field2_yield}},{"fieldId":3,"ownerFarmId":0,"sizeHa":3.2,"price":28000,"fruitType":null,"growthState":null,"estimatedYieldLiters":null}],"storages":[{"fillType":"BARLEY","amount":${barley_amount},"capacity":${barley_capacity},"currentPricePer1000L":${barley_price_per_1000l},"bestPricePer1000L":${barley_best_price_per_1000l},"bestPricePeriod":${barley_best_price_period},"bestPricePeriodLabel":"${MONTH_NAMES[$((barley_best_price_period - 1))]}"},{"fillType":"WHEAT","amount":${wheat_amount},"capacity":${wheat_capacity},"currentPricePer1000L":${wheat_price_per_1000l},"bestPricePer1000L":${wheat_best_price_per_1000l},"bestPricePeriod":${wheat_best_price_period},"bestPricePeriodLabel":"${MONTH_NAMES[$((wheat_best_price_period - 1))]}"}]}
 JSON
     mv "${tmp_file}" "${WORLD_FILE}"
 }

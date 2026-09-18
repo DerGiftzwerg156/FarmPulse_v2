@@ -18,7 +18,9 @@ import jakarta.persistence.Table;
  * sind nullable: die Bridge liest jedes Detail-Feld einzeln ab (siehe
  * {@code FarmPulseBridge.readVehicleDetails()}) - schlaegt z.B. nur die
  * PS-Ermittlung fehl (z.B. bei einem nicht-motorisierten Anhaenger), bleiben
- * die uebrigen Felder trotzdem befuellt.
+ * die uebrigen Felder trotzdem befuellt. {@code ownershipStatus} ist einer
+ * von {@code OWNED}/{@code LEASED}/{@code MISSION}/{@code SHOP_CONFIG}/
+ * {@code UNKNOWN}, siehe Bridge-seitiges {@code VehicleCollector.lua}.
  */
 @Entity
 @Table(name = "vehicle_snapshot")
@@ -35,6 +37,9 @@ public class VehicleSnapshot {
     @Column(name = "name", nullable = false, length = 128)
     private String name;
 
+    @Column(name = "category", nullable = false, length = 64)
+    private String category;
+
     @Column(name = "horsepower_hp")
     private Double horsepowerHp;
 
@@ -44,6 +49,9 @@ public class VehicleSnapshot {
     @Column(name = "condition_percent")
     private Double conditionPercent;
 
+    @Column(name = "ownership_status", nullable = false, length = 16)
+    private String ownershipStatus;
+
     @Column(name = "sell_price", nullable = false)
     private long sellPrice;
 
@@ -51,12 +59,14 @@ public class VehicleSnapshot {
         // fuer JPA
     }
 
-    public VehicleSnapshot(String name, Double horsepowerHp, Double operatingHours, Double conditionPercent,
-            long sellPrice) {
+    public VehicleSnapshot(String name, String category, Double horsepowerHp, Double operatingHours,
+            Double conditionPercent, String ownershipStatus, long sellPrice) {
         this.name = name;
+        this.category = category;
         this.horsepowerHp = horsepowerHp;
         this.operatingHours = operatingHours;
         this.conditionPercent = conditionPercent;
+        this.ownershipStatus = ownershipStatus;
         this.sellPrice = sellPrice;
     }
 
@@ -76,6 +86,10 @@ public class VehicleSnapshot {
         return name;
     }
 
+    public String getCategory() {
+        return category;
+    }
+
     public Double getHorsepowerHp() {
         return horsepowerHp;
     }
@@ -86,6 +100,10 @@ public class VehicleSnapshot {
 
     public Double getConditionPercent() {
         return conditionPercent;
+    }
+
+    public String getOwnershipStatus() {
+        return ownershipStatus;
     }
 
     public long getSellPrice() {

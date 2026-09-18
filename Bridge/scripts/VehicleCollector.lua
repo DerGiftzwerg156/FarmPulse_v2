@@ -4,9 +4,9 @@
     Reine Verarbeitungslogik fuer den Fuhrpark: nimmt eine rohe Liste von
     Einzelfahrzeug-Datensaetzen entgegen (siehe FarmPulseBridge.readVehicles()
     fuer den eigentlichen Lesezugriff auf g_currentMission.vehicleSystem) und
-    baut daraus sowohl die "vehicles"-Liste (Name, PS, Betriebsstunden,
-    Zustand, Verkaufspreis je Fahrzeug) als auch den aggregierten "fleetValue"
-    fuer die world.json-Nutzlast.
+    baut daraus sowohl die "vehicles"-Liste (Name, Kategorie, PS,
+    Betriebsstunden, Zustand, Eigentumsstatus, Verkaufspreis je Fahrzeug) als
+    auch den aggregierten "fleetValue" fuer die world.json-Nutzlast.
 
     Bewusst weiterhin NICHT exportiert: Kraftstofffuellstand - der beobachtet
     der Spieler ohnehin selbst im laufenden Spiel (siehe Bridge/README.md).
@@ -20,6 +20,19 @@
 VehicleCollector = {}
 
 local FALLBACK_NAME = "Unbekanntes Fahrzeug"
+local FALLBACK_CATEGORY = "Sonstiges"
+local FALLBACK_OWNERSHIP_STATUS = "UNKNOWN"
+
+-- Bestaetigte VehiclePropertyState-Werte (siehe FarmPulseBridge.readVehicleDetails()
+-- fuer die Herkunft) - SHOP_CONFIG taucht in g_currentMission.vehicleSystem.vehicles
+-- praktisch nie auf (nur Shop-Vorschauobjekte), wird hier trotzdem als gueltiger
+-- Wert akzeptiert, statt ihn stillschweigend auf UNKNOWN abzubilden.
+local VALID_OWNERSHIP_STATUSES = {
+    OWNED = true,
+    LEASED = true,
+    MISSION = true,
+    SHOP_CONFIG = true,
+}
 
 local function round2(value)
     value = value or 0
@@ -54,6 +67,23 @@ local function normalizeName(value)
     return FALLBACK_NAME
 end
 
+local function normalizeCategory(value)
+    if type(value) == "string" then
+        local trimmed = value:match("^%s*(.-)%s*$")
+        if trimmed ~= "" then
+            return trimmed
+        end
+    end
+    return FALLBACK_CATEGORY
+end
+
+local function normalizeOwnershipStatus(value)
+    if type(value) == "string" and VALID_OWNERSHIP_STATUSES[value] then
+        return value
+    end
+    return FALLBACK_OWNERSHIP_STATUS
+end
+
 --- Summiert eine rohe Liste von Fahrzeugpreisen (Zahlen) zu einem
 -- nicht-negativen, gerundeten Gesamtwert. Nicht-numerische/negative Eintraege
 -- werden ignoriert, statt die gesamte Berechnung scheitern zu lassen.
@@ -81,11 +111,12 @@ function VehicleCollector.buildFleetValue(rawPrices)
 end
 
 --- Normalisiert einen einzelnen rohen Fahrzeug-Datensatz.
--- @param raw Tabelle mit den rohen Feldern name, horsepowerHp, operatingHours,
---        conditionPercent, sellPrice (jeweils optional/nil, falls die Engine
---        sie nicht liefern konnte - siehe FarmPulseBridge.readVehicles())
--- @return normalisierte Tabelle mit name, horsepowerHp, operatingHours,
---         conditionPercent, sellPrice
+-- @param raw Tabelle mit den rohen Feldern name, category, horsepowerHp,
+--        operatingHours, conditionPercent, ownershipStatus, sellPrice
+--        (jeweils optional/nil, falls die Engine sie nicht liefern konnte -
+--        siehe FarmPulseBridge.readVehicles())
+-- @return normalisierte Tabelle mit name, category, horsepowerHp,
+--         operatingHours, conditionPercent, ownershipStatus, sellPrice
 function VehicleCollector.normalizeVehicle(raw)
     raw = raw or {}
 
@@ -106,9 +137,11 @@ function VehicleCollector.normalizeVehicle(raw)
 
     return {
         name = normalizeName(raw.name),
+        category = normalizeCategory(raw.category),
         horsepowerHp = horsepowerHp,
         operatingHours = operatingHours,
         conditionPercent = conditionPercent,
+        ownershipStatus = normalizeOwnershipStatus(raw.ownershipStatus),
         sellPrice = toNonNegativeInt(raw.sellPrice),
     }
 end

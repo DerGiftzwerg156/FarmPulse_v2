@@ -80,8 +80,9 @@ public class WorldIngestService {
                 new FieldSnapshot(field.fieldId(), field.ownerFarmId(), field.sizeHa(), field.price(),
                         field.fruitType(), field.growthState(), field.estimatedYieldLiters())));
         data.vehicles().forEach(vehicle -> snapshot.addVehicle(
-                new VehicleSnapshot(vehicle.name(), vehicle.horsepowerHp(), vehicle.operatingHours(),
-                        vehicle.conditionPercent(), vehicle.sellPrice())));
+                new VehicleSnapshot(vehicle.name(), vehicle.category(), vehicle.horsepowerHp(),
+                        vehicle.operatingHours(), vehicle.conditionPercent(), vehicle.ownershipStatus(),
+                        vehicle.sellPrice())));
         data.storages().forEach(storage -> snapshot.addStorage(
                 new StorageSnapshot(storage.fillType(), storage.amount(), storage.capacity(),
                         storage.currentPricePer1000L(), storage.bestPricePer1000L(), storage.bestPricePeriod(),

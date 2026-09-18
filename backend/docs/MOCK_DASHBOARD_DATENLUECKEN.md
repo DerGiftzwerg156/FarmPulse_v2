@@ -136,22 +136,28 @@ aktuellen Job sowie GPS-Position (X/Y).
 
 `world.json`/`vehicles[]` liefert inzwischen "Grundlegende" Fahrzeugdaten je
 Fahrzeug (statt nur des aggregierten `fleetValue`): `name` (Marke + Modell,
-`Vehicle:getFullName()`), `horsepowerHp` (Motorleistung, `null` bei
-nicht-motorisierten Fahrzeugen), `operatingHours` (Betriebsstunden,
-`Vehicle:getOperatingTime()`), `conditionPercent` (Zustand in %, aus
-`Vehicle:getDamageAmount()` abgeleitet) sowie `sellPrice` (Verkaufspreis,
-`Vehicle:getSellPrice()`) - siehe `Bridge/README.md`, Abschnitt
-"Fuhrpark-Details"/Tabelle, für die Konfidenz je Feld (insbesondere die
-Einheit von `horsepowerHp` ist HERGELEITET, nicht abschließend bestätigt).
+`Vehicle:getFullName()`), `category` (lokalisierter Kategorie-Anzeigename,
+z.B. "Traktoren", ueber `g_storeManager:getCategoryByName(...).title`),
+`horsepowerHp` (Motorleistung, `null` bei nicht-motorisierten Fahrzeugen),
+`operatingHours` (Betriebsstunden, `Vehicle:getOperatingTime()`),
+`conditionPercent` (Zustand in %, aus `Vehicle:getDamageAmount()`
+abgeleitet), `ownershipStatus` (Eigentumsstatus - `OWNED`/`LEASED`/
+`MISSION`/`SHOP_CONFIG`/`UNKNOWN`, aus `Vehicle:getPropertyState()`) sowie
+`sellPrice` (Verkaufspreis, `Vehicle:getSellPrice()`) - siehe
+`Bridge/README.md`, Abschnitt "Fuhrpark-Details"/Tabelle, für die Konfidenz
+je Feld (insbesondere die Einheit von `horsepowerHp` ist HERGELEITET, nicht
+abschließend bestätigt).
 
-- Backend: `vehicle_snapshot` (Migration V12) speichert die Liste je
-  `WorldSnapshot`, analog zu `field_snapshot`/`storage_snapshot`.
-  `GET /api/vehicles` (`de.farmpulse.backend.vehicles`) liefert die Fahrzeuge
-  der aktiven Farm samt Zusammenfassung (Anzahl, Gesamt-Verkaufswert,
-  durchschnittlicher Zustand).
+- Backend: `vehicle_snapshot` (Migration V12, um `category`/`ownershipStatus`
+  ergänzt in Migration V13) speichert die Liste je `WorldSnapshot`, analog zu
+  `field_snapshot`/`storage_snapshot`. `GET /api/vehicles`
+  (`de.farmpulse.backend.vehicles`) liefert die Fahrzeuge der aktiven Farm
+  samt Zusammenfassung (Anzahl, Gesamt-Verkaufswert, durchschnittlicher
+  Zustand).
 - Frontend: eigene `/fleet`-Seite (Sidebar-Punkt "Flotte", vormals
-  ausgegraut) zeigt Name, PS, Betriebsstunden, Zustand (Balken) und
-  Verkaufspreis je Fahrzeug.
+  ausgegraut) zeigt Name, Kategorie, PS, Betriebsstunden, Zustand (Balken),
+  Eigentumsstatus und Verkaufspreis je Fahrzeug, mit Filtern nach Kategorie
+  und Eigentumsstatus sowie einer Namenssuche.
 
 **Weiterhin nicht abgedeckt** (keine bestätigte FS25-Modding-API-Quelle
 gefunden, siehe `Bridge/README.md`): zugewiesener Mitarbeiter, Status
