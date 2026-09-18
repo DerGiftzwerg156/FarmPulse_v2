@@ -92,6 +92,44 @@ wheat_amount=5000
 wheat_capacity=20000
 barley_amount=1200
 barley_capacity=20000
+canola_amount=8000
+canola_capacity=15000
+maize_amount=12000
+maize_capacity=30000
+
+# --- Weitere Lagerbestaende ohne eigene Wirtschaftssimulation ---
+# Zusaetzliche Fill-Typen, rein um dem Dashboard (insbesondere dem
+# amount>0-Standardfilter und der Suche auf der Lagerbestaende-Seite) eine
+# realistischere Menge/Vielfalt an fillTypes zum Testen zu geben - anders als
+# WHEAT/BARLEY/CANOLA/MAIZE oben bleiben diese ueber die Laufzeit unveraendert
+# (keine Preishistorie/Mengenschwankung), da es hier nur um Anzahl und
+# Bandbreite der fillTypes geht, nicht um eine vollstaendige Wirtschafts-
+# simulation je Fill-Typ.
+sunflower_amount=3000
+sunflower_capacity=8000
+sunflower_price_per_1000l=380.00
+sunflower_best_price_per_1000l=400.00
+sunflower_best_price_period=8
+# amount=0 bei vorhandener capacity: testet den amount>0-Standardfilter auf
+# der Lagerbestaende-Seite (soll standardmaessig ausgeblendet werden).
+potato_amount=0
+potato_capacity=10000
+potato_price_per_1000l=145.00
+potato_best_price_per_1000l=160.00
+potato_best_price_period=10
+sugarbeet_amount=0
+sugarbeet_capacity=25000
+sugarbeet_price_per_1000l=55.30
+sugarbeet_best_price_per_1000l=62.10
+sugarbeet_best_price_period=11
+# Nicht handelbare Fill-Typen (kein Marktpreis, siehe Bridge/README.md,
+# "Bekannte Luecken"): currentPricePer1000L/bestPricePer1000L bleiben null.
+manure_amount=0
+manure_capacity=20000
+water_amount=5000
+water_capacity=5000
+liquidmanure_amount=15000
+liquidmanure_capacity=15000
 
 # --- Marktpreise je Lagerbestand (siehe PriceCollector.lua) ---
 # HINWEIS: die echte Bridge zaehlt FS25-"Perioden" (1-12), die je nach
@@ -105,6 +143,12 @@ wheat_best_price_period=${month}
 barley_price_per_1000l=175.20
 barley_best_price_per_1000l=175.20
 barley_best_price_period=${month}
+canola_price_per_1000l=410.50
+canola_best_price_per_1000l=410.50
+canola_best_price_period=${month}
+maize_price_per_1000l=165.75
+maize_best_price_per_1000l=165.75
+maize_best_price_period=${month}
 
 # --- Anbaudaten je eigenem Feld (siehe FieldCollector.computeCropInfo()) ---
 # growth_pct laeuft 0..100 (Prozent von growthState) und startet nach dem
@@ -131,6 +175,27 @@ JSON
     mv "${tmp_file}" "${TELEMETRY_FILE}"
 }
 
+# Baut einen einzelnen storages-JSON-Eintrag. price/bestPrice/bestPeriod
+# leer (="") -> currentPricePer1000L/bestPricePer1000L/bestPricePeriod/
+# bestPricePeriodLabel werden null (nicht handelbarer Fill-Typ, siehe
+# Bridge/README.md, "Bekannte Luecken").
+storage_json() {
+    local fill_type="$1" amount="$2" capacity="$3" price="$4" best_price="$5" best_period="$6"
+    local price_json="null" best_price_json="null" best_period_json="null" best_period_label_json="null"
+    if [ -n "${price}" ]; then
+        price_json="${price}"
+    fi
+    if [ -n "${best_price}" ]; then
+        best_price_json="${best_price}"
+    fi
+    if [ -n "${best_period}" ]; then
+        best_period_json="${best_period}"
+        best_period_label_json="\"${MONTH_NAMES[$((best_period - 1))]}\""
+    fi
+    printf '{"fillType":"%s","amount":%s,"capacity":%s,"currentPricePer1000L":%s,"bestPricePer1000L":%s,"bestPricePeriod":%s,"bestPricePeriodLabel":%s}' \
+        "${fill_type}" "${amount}" "${capacity}" "${price_json}" "${best_price_json}" "${best_period_json}" "${best_period_label_json}"
+}
+
 write_world() {
     local tmp_file="${WORLD_FILE}.tmp"
     # growthState/estimatedYieldLiters als Dezimalzahlen - Bash rechnet nur
@@ -147,8 +212,13 @@ write_world() {
         vehicle3_hp_json="null"
     fi
 
+    # Alphabetisch nach fillType, wie von der echten Bridge geliefert (siehe
+    # StorageCollector.buildStorages()).
+    local storages_json
+    storages_json="$(storage_json "BARLEY" "${barley_amount}" "${barley_capacity}" "${barley_price_per_1000l}" "${barley_best_price_per_1000l}" "${barley_best_price_period}"),$(storage_json "CANOLA" "${canola_amount}" "${canola_capacity}" "${canola_price_per_1000l}" "${canola_best_price_per_1000l}" "${canola_best_price_period}"),$(storage_json "LIQUIDMANURE" "${liquidmanure_amount}" "${liquidmanure_capacity}" "" "" ""),$(storage_json "MAIZE" "${maize_amount}" "${maize_capacity}" "${maize_price_per_1000l}" "${maize_best_price_per_1000l}" "${maize_best_price_period}"),$(storage_json "MANURE" "${manure_amount}" "${manure_capacity}" "" "" ""),$(storage_json "POTATO" "${potato_amount}" "${potato_capacity}" "${potato_price_per_1000l}" "${potato_best_price_per_1000l}" "${potato_best_price_period}"),$(storage_json "SUGARBEET" "${sugarbeet_amount}" "${sugarbeet_capacity}" "${sugarbeet_price_per_1000l}" "${sugarbeet_best_price_per_1000l}" "${sugarbeet_best_price_period}"),$(storage_json "SUNFLOWER" "${sunflower_amount}" "${sunflower_capacity}" "${sunflower_price_per_1000l}" "${sunflower_best_price_per_1000l}" "${sunflower_best_price_period}"),$(storage_json "WATER" "${water_amount}" "${water_capacity}" "" "" ""),$(storage_json "WHEAT" "${wheat_amount}" "${wheat_capacity}" "${wheat_price_per_1000l}" "${wheat_best_price_per_1000l}" "${wheat_best_price_period}")"
+
     cat > "${tmp_file}" <<JSON
-{"fleetValue":${fleet_value},"vehicles":[{"name":"${vehicle1_name}","category":"${vehicle1_category}","horsepowerHp":${vehicle1_hp},"operatingHours":${vehicle1_hours},"conditionPercent":${vehicle1_condition},"ownershipStatus":"${vehicle1_ownership}","sellPrice":${vehicle1_price}},{"name":"${vehicle2_name}","category":"${vehicle2_category}","horsepowerHp":${vehicle2_hp},"operatingHours":${vehicle2_hours},"conditionPercent":${vehicle2_condition},"ownershipStatus":"${vehicle2_ownership}","sellPrice":${vehicle2_price}},{"name":"${vehicle3_name}","category":"${vehicle3_category}","horsepowerHp":${vehicle3_hp_json},"operatingHours":${vehicle3_hours},"conditionPercent":${vehicle3_condition},"ownershipStatus":"${vehicle3_ownership}","sellPrice":${vehicle3_price}}],"fields":[{"fieldId":1,"ownerFarmId":${farm_id},"sizeHa":${field1_area_ha},"price":32000,"fruitType":"${field1_fruit}","growthState":${field1_growth},"estimatedYieldLiters":${field1_yield}},{"fieldId":2,"ownerFarmId":${farm_id},"sizeHa":${field2_area_ha},"price":45000,"fruitType":"${field2_fruit}","growthState":${field2_growth},"estimatedYieldLiters":${field2_yield}},{"fieldId":3,"ownerFarmId":0,"sizeHa":3.2,"price":28000,"fruitType":null,"growthState":null,"estimatedYieldLiters":null}],"storages":[{"fillType":"BARLEY","amount":${barley_amount},"capacity":${barley_capacity},"currentPricePer1000L":${barley_price_per_1000l},"bestPricePer1000L":${barley_best_price_per_1000l},"bestPricePeriod":${barley_best_price_period},"bestPricePeriodLabel":"${MONTH_NAMES[$((barley_best_price_period - 1))]}"},{"fillType":"WHEAT","amount":${wheat_amount},"capacity":${wheat_capacity},"currentPricePer1000L":${wheat_price_per_1000l},"bestPricePer1000L":${wheat_best_price_per_1000l},"bestPricePeriod":${wheat_best_price_period},"bestPricePeriodLabel":"${MONTH_NAMES[$((wheat_best_price_period - 1))]}"}]}
+{"fleetValue":${fleet_value},"vehicles":[{"name":"${vehicle1_name}","category":"${vehicle1_category}","horsepowerHp":${vehicle1_hp},"operatingHours":${vehicle1_hours},"conditionPercent":${vehicle1_condition},"ownershipStatus":"${vehicle1_ownership}","sellPrice":${vehicle1_price}},{"name":"${vehicle2_name}","category":"${vehicle2_category}","horsepowerHp":${vehicle2_hp},"operatingHours":${vehicle2_hours},"conditionPercent":${vehicle2_condition},"ownershipStatus":"${vehicle2_ownership}","sellPrice":${vehicle2_price}},{"name":"${vehicle3_name}","category":"${vehicle3_category}","horsepowerHp":${vehicle3_hp_json},"operatingHours":${vehicle3_hours},"conditionPercent":${vehicle3_condition},"ownershipStatus":"${vehicle3_ownership}","sellPrice":${vehicle3_price}}],"fields":[{"fieldId":1,"ownerFarmId":${farm_id},"sizeHa":${field1_area_ha},"price":32000,"fruitType":"${field1_fruit}","growthState":${field1_growth},"estimatedYieldLiters":${field1_yield}},{"fieldId":2,"ownerFarmId":${farm_id},"sizeHa":${field2_area_ha},"price":45000,"fruitType":"${field2_fruit}","growthState":${field2_growth},"estimatedYieldLiters":${field2_yield}},{"fieldId":3,"ownerFarmId":0,"sizeHa":3.2,"price":28000,"fruitType":null,"growthState":null,"estimatedYieldLiters":null}],"storages":[${storages_json}]}
 JSON
     mv "${tmp_file}" "${WORLD_FILE}"
 }
@@ -216,6 +286,14 @@ while true; do
     if [ "${barley_amount}" -lt 0 ]; then
         barley_amount=0
     fi
+    canola_amount=$(((canola_amount + (RANDOM % 401) - 150) % (canola_capacity + 1)))
+    if [ "${canola_amount}" -lt 0 ]; then
+        canola_amount=0
+    fi
+    maize_amount=$(((maize_amount + (RANDOM % 601) - 200) % (maize_capacity + 1)))
+    if [ "${maize_amount}" -lt 0 ]; then
+        maize_amount=0
+    fi
 
     # Marktpreise leicht schwanken lassen und den bisher besten Preis samt
     # Periode (hier: simulierter Kalendermonat) fortschreiben (siehe
@@ -229,6 +307,16 @@ while true; do
     if awk "BEGIN { exit !(${barley_price_per_1000l} > ${barley_best_price_per_1000l}) }"; then
         barley_best_price_per_1000l="${barley_price_per_1000l}"
         barley_best_price_period=${month}
+    fi
+    canola_price_per_1000l=$(awk "BEGIN { p = ${canola_price_per_1000l} + (${RANDOM} % 21 - 10) / 10; if (p < 0) p = 0; printf \"%.2f\", p }")
+    if awk "BEGIN { exit !(${canola_price_per_1000l} > ${canola_best_price_per_1000l}) }"; then
+        canola_best_price_per_1000l="${canola_price_per_1000l}"
+        canola_best_price_period=${month}
+    fi
+    maize_price_per_1000l=$(awk "BEGIN { p = ${maize_price_per_1000l} + (${RANDOM} % 21 - 10) / 10; if (p < 0) p = 0; printf \"%.2f\", p }")
+    if awk "BEGIN { exit !(${maize_price_per_1000l} > ${maize_best_price_per_1000l}) }"; then
+        maize_best_price_per_1000l="${maize_price_per_1000l}"
+        maize_best_price_period=${month}
     fi
 
     # Wachstum der beiden simulierten Felder voranschreiten lassen; nach
