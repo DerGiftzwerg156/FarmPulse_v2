@@ -26,6 +26,10 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/fields/fields.component').then((m) => m.FieldsComponent),
       },
       {
+        path: 'fleet',
+        loadComponent: () => import('./pages/vehicles/vehicles.component').then((m) => m.VehiclesComponent),
+      },
+      {
         path: 'finance',
         loadComponent: () => import('./pages/finance/finance.component').then((m) => m.FinanceComponent),
       },

@@ -12,9 +12,10 @@
         - world.json (alle WORLD_POLL_INTERVAL_MS, seltener - "was mir gehoert"):
           Feld-/Farmland-Informationen fuer ALLE Farmlands der Karte (inkl.
           optionaler Anbaudaten: Fruchtart, Wachstumsfortschritt,
-          Ertragsschaetzung), aggregierter Fuhrpark-Wert, Lager-/Silobestaende
-          (inkl. aktuellem Marktpreis sowie bestem Preis + Periode der
-          letzten 12 FS25-Perioden je Fill-Typ)
+          Ertragsschaetzung), aggregierter Fuhrpark-Wert samt Liste einzelner
+          Fahrzeuge (Name, PS, Betriebsstunden, Zustand, Verkaufspreis),
+          Lager-/Silobestaende (inkl. aktuellem Marktpreis sowie bestem Preis +
+          Periode der letzten 12 FS25-Perioden je Fill-Typ)
         - farm.json (einmalig bei Aktivierung, aendert sich praktisch nie):
           Hofname, Spielername
 
@@ -28,7 +29,7 @@
     PriceCollector, FarmCollector, WorldCollector, TelemetryCollector).
 
     Bewusst NICHT exportiert (siehe README.md fuer die Begruendung je Kategorie):
-    Fahrzeugzustand (Tank/Verschleiss - beobachtet der Spieler selbst im Spiel),
+    Kraftstofffuellstand je Fahrzeug (beobachtet der Spieler selbst im Spiel),
     Tiere, Vertraege/Missionen, Kredite/Schulden (uebernimmt Core komplett),
     Verlauf/Historie (uebernimmt das Spiel selbst). Anbaudaten je Feld
     (Fruchtart/Wachstum/Ertragsschaetzung) waren urspruenglich ebenfalls
@@ -493,40 +494,108 @@ function FarmPulseBridge.readPlayerName()
     return nil, "fallback-nil"
 end
 
---- Liest die rohen Verkaufspreise aller Fahrzeuge der aktuellen Farm (fuer den
--- aggregierten Fuhrpark-Wert "fleetValue" - siehe VehicleCollector). Einzelne
--- Fahrzeugzustaende (Tank, Verschleiss) werden bewusst NICHT gelesen, siehe
--- Dateikommentar.
+--- Liest je Fahrzeug der aktuellen Farm einen rohen Detail-Datensatz (Name, PS,
+-- Betriebsstunden, Zustand, Verkaufspreis) fuer die "vehicles"-Liste sowie den
+-- aggregierten Fuhrpark-Wert "fleetValue" (siehe VehicleCollector). Einzelne
+-- Fahrzeug-Verbrauchsdaten (Kraftstofffuellstand) werden weiterhin bewusst
+-- NICHT gelesen, siehe Dateikommentar/README.md - die beobachtet der Spieler
+-- ohnehin selbst im laufenden Spiel.
 --
--- BESTAETIGT (siehe README.md): gegen zwei echte, veroeffentlichte Mods
--- geprueft (FS25_VehicleExplorer/FS25_Tardis fuer
--- g_currentMission.vehicleSystem.vehicles als Fahrzeugliste dieser
--- FS25-Generation, FS25_UsedPlus fuer Vehicle:getSellPrice()).
+-- Jedes Detail-Feld ist einzeln ueber pcall() abgesichert: schlaegt z.B. nur
+-- die PS-Ermittlung fehl (z.B. bei einem nicht-motorisierten Anhaenger ohne
+-- Motor-Konfiguration), liefert der Eintrag trotzdem Name/Betriebsstunden/
+-- Zustand/Verkaufspreis, statt das gesamte Fahrzeug zu verwerfen.
+--
+-- BESTAETIGT (siehe README.md, Abschnitt "Fuhrpark-Details"): gegen den
+-- dekompilierten FS25-Basisspiel-Quellcode geprueft (Quelle 9,
+-- vehicles/Vehicle.lua): Vehicle:getFullName() (Name inkl. Marke),
+-- Vehicle:getOperatingTime() (Betriebszeit in Millisekunden, self.operatingTime),
+-- Vehicle:getSellPrice() (bereits bestehend, siehe unten) sowie
+-- Vehicle:getDamageAmount() (vehicles/specializations/Wearable.lua, 0..1) sind
+-- allesamt echte, im Basisspiel-Quellcode vorhandene Methoden. Der PS-Wert
+-- (storeItem.specs.power) ist HERGELEITET: Vehicle.calculateSellPrice() liest
+-- exakt dieses Feld ueber denselben g_storeManager:getItemByXMLFilename() +
+-- StoreItemUtil.loadSpecsFromXML()-Zugriff, die Einheit (PS vs. kW) selbst
+-- konnte nicht gegen die l10n-Textdateien verifiziert werden - siehe README.md
+-- fuer die Einschraenkung.
 -- @param farmId FarmID, siehe readFarmId()
--- @return Liste roher Preis-Zahlen (leer, falls g_currentMission.vehicleSystem
+-- @return Liste roher {name, horsepowerHp, operatingHours, conditionPercent,
+--         sellPrice}-Tabellen (leer, falls g_currentMission.vehicleSystem
 --         nicht verfuegbar ist oder der Zugriff fehlschlaegt)
-function FarmPulseBridge.readVehiclePrices(farmId)
-    local prices = {}
+function FarmPulseBridge.readVehicles(farmId)
+    local vehicles = {}
 
     local ok = pcall(function()
-        local vehicles = g_currentMission.vehicleSystem.vehicles
-        for _, vehicle in pairs(vehicles) do
+        local allVehicles = g_currentMission.vehicleSystem.vehicles
+        for _, vehicle in pairs(allVehicles) do
             local ownerOk, ownerFarmId = pcall(function() return vehicle:getOwnerFarmId() end)
             if ownerOk and ownerFarmId == farmId then
-                local priceOk, price = pcall(function() return vehicle:getSellPrice() end)
-                if priceOk and type(price) == "number" then
-                    table.insert(prices, price)
-                end
+                table.insert(vehicles, FarmPulseBridge.readVehicleDetails(vehicle))
             end
         end
     end)
 
     if not ok then
-        FarmPulseBridge.log("WARNUNG: Konnte Fahrzeugliste nicht ueber g_currentMission.vehicleSystem lesen - exportiere fleetValue 0.")
+        FarmPulseBridge.log("WARNUNG: Konnte Fahrzeugliste nicht ueber g_currentMission.vehicleSystem lesen - exportiere leere vehicles-Liste/fleetValue 0.")
         return {}
     end
 
-    return prices
+    return vehicles
+end
+
+--- Liest die rohen Detailwerte eines einzelnen Fahrzeugs, siehe readVehicles().
+-- @param vehicle Fahrzeugobjekt aus g_currentMission.vehicleSystem.vehicles
+-- @return rohe {name, horsepowerHp, operatingHours, conditionPercent,
+--         sellPrice}-Tabelle (einzelne Felder nil, falls der jeweilige
+--         Lesezugriff fehlschlaegt)
+function FarmPulseBridge.readVehicleDetails(vehicle)
+    local nameOk, name = pcall(function() return vehicle:getFullName() end)
+    if not nameOk then
+        name = nil
+        FarmPulseBridge.log("WARNUNG: Konnte Fahrzeugnamen ueber getFullName() nicht lesen.")
+    end
+
+    local horsepowerHp = nil
+    local powerOk = pcall(function()
+        local storeItem = g_storeManager:getItemByXMLFilename(vehicle.configFileName)
+        if storeItem ~= nil then
+            StoreItemUtil.loadSpecsFromXML(storeItem)
+            horsepowerHp = storeItem.specs.power
+        end
+    end)
+    if not powerOk then
+        FarmPulseBridge.log("WARNUNG: Konnte PS-Wert eines Fahrzeugs nicht ueber g_storeManager lesen.")
+    end
+
+    local operatingHours = nil
+    local operatingOk, operatingTimeMs = pcall(function() return vehicle:getOperatingTime() end)
+    if operatingOk and type(operatingTimeMs) == "number" then
+        operatingHours = operatingTimeMs / (1000 * 60 * 60)
+    else
+        FarmPulseBridge.log("WARNUNG: Konnte Betriebsstunden eines Fahrzeugs nicht ueber getOperatingTime() lesen.")
+    end
+
+    local conditionPercent = nil
+    local damageOk, damageAmount = pcall(function() return vehicle:getDamageAmount() end)
+    if damageOk and type(damageAmount) == "number" then
+        conditionPercent = (1 - damageAmount) * 100
+    else
+        FarmPulseBridge.log("WARNUNG: Konnte Fahrzeugzustand eines Fahrzeugs nicht ueber getDamageAmount() lesen.")
+    end
+
+    local sellPriceOk, sellPrice = pcall(function() return vehicle:getSellPrice() end)
+    if not sellPriceOk or type(sellPrice) ~= "number" then
+        sellPrice = 0
+        FarmPulseBridge.log("WARNUNG: Konnte Verkaufspreis eines Fahrzeugs ueber getSellPrice() nicht lesen - exportiere 0.")
+    end
+
+    return {
+        name = name,
+        horsepowerHp = horsepowerHp,
+        operatingHours = operatingHours,
+        conditionPercent = conditionPercent,
+        sellPrice = sellPrice,
+    }
 end
 
 --- Liest die rohen Lager-/Silobestaende der aktuellen Farm ueber die
@@ -732,7 +801,7 @@ function FarmPulseBridge.exportWorld()
     local farmId = FarmPulseBridge.readFarmId()
     local rawFarmlands = FarmPulseBridge.readFarmlands()
     local rawFieldCrops = FarmPulseBridge.readFieldCrops()
-    local rawVehiclePrices = FarmPulseBridge.readVehiclePrices(farmId)
+    local rawVehicles = FarmPulseBridge.readVehicles(farmId)
     local rawStorages = FarmPulseBridge.readStorages(farmId)
 
     local storages = StorageCollector.buildStorages(rawStorages)
@@ -743,9 +812,15 @@ function FarmPulseBridge.exportWorld()
         storages[i] = PriceCollector.withPrice(storage, rawCurrentPrice, rawHistory, bestPricePeriodLabel)
     end
 
+    local rawSellPrices = {}
+    for i, vehicle in ipairs(rawVehicles) do
+        rawSellPrices[i] = vehicle.sellPrice
+    end
+
     local payload = WorldCollector.buildPayload({
         fields = FieldCollector.buildFields(rawFarmlands, rawFieldCrops),
-        fleetValue = VehicleCollector.buildFleetValue(rawVehiclePrices),
+        vehicles = VehicleCollector.buildVehicles(rawVehicles),
+        fleetValue = VehicleCollector.buildFleetValue(rawSellPrices),
         storages = storages,
     })
 

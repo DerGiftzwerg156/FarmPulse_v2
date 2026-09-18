@@ -4,6 +4,7 @@ import de.farmpulse.backend.config.BridgeExchangeProperties;
 import de.farmpulse.backend.domain.Farm;
 import de.farmpulse.backend.domain.FieldSnapshot;
 import de.farmpulse.backend.domain.StorageSnapshot;
+import de.farmpulse.backend.domain.VehicleSnapshot;
 import de.farmpulse.backend.domain.WorldSnapshot;
 import de.farmpulse.backend.ingest.dto.WorldData;
 import de.farmpulse.backend.processing.WorldProcessingStep;
@@ -19,7 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Liest world.json ein und historisiert jede tatsaechlich neue
- * Momentaufnahme als {@link WorldSnapshot} samt Feld-/Lagerbestandsliste.
+ * Momentaufnahme als {@link WorldSnapshot} samt Fahrzeug-/Feld-/
+ * Lagerbestandsliste.
  *
  * <p>world.json enthaelt selbst keine FarmID (siehe Bridge/README.md,
  * Abschnitt "Dateiformat: world.json") - siehe {@link FarmRepository} fuer
@@ -77,18 +79,23 @@ public class WorldIngestService {
         data.fields().forEach(field -> snapshot.addField(
                 new FieldSnapshot(field.fieldId(), field.ownerFarmId(), field.sizeHa(), field.price(),
                         field.fruitType(), field.growthState(), field.estimatedYieldLiters())));
+        data.vehicles().forEach(vehicle -> snapshot.addVehicle(
+                new VehicleSnapshot(vehicle.name(), vehicle.horsepowerHp(), vehicle.operatingHours(),
+                        vehicle.conditionPercent(), vehicle.sellPrice())));
         data.storages().forEach(storage -> snapshot.addStorage(
                 new StorageSnapshot(storage.fillType(), storage.amount(), storage.capacity(),
                         storage.currentPricePer1000L(), storage.bestPricePer1000L(), storage.bestPricePeriod(),
                         storage.bestPricePeriodLabel())));
 
-        log.debug("Speichere WorldSnapshot: farmId={}, fleetValue={}, felder={}, lagerbestaende={}",
-                farm.get().getId(), data.fleetValue(), data.fields().size(), data.storages().size());
+        log.debug("Speichere WorldSnapshot: farmId={}, fleetValue={}, fahrzeuge={}, felder={}, lagerbestaende={}",
+                farm.get().getId(), data.fleetValue(), data.vehicles().size(), data.fields().size(),
+                data.storages().size());
         WorldSnapshot saved = snapshotRepository.save(snapshot);
 
         lastProcessedAt.set(exchangeFile.recordedAt());
-        log.debug("world.json eingelesen: snapshotId={}, {} Felder, {} Lagerbestaende, recordedAt={}",
-                saved.getId(), data.fields().size(), data.storages().size(), exchangeFile.recordedAt());
+        log.debug("world.json eingelesen: snapshotId={}, {} Fahrzeuge, {} Felder, {} Lagerbestaende, recordedAt={}",
+                saved.getId(), data.vehicles().size(), data.fields().size(), data.storages().size(),
+                exchangeFile.recordedAt());
         return Optional.of(saved);
     }
 }

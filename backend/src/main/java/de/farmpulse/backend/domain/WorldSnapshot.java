@@ -19,10 +19,10 @@ import java.util.List;
 /**
  * Eine historisierte Momentaufnahme von world.json (siehe Bridge/README.md,
  * Abschnitt "Dateiformat: world.json"): Fuhrpark-Wert plus die zugehoerigen
- * Feld- und Lagerbestandslisten dieses Zeitpunkts. Da die Bridge bei jedem
- * Poll die vollstaendige Feld-/Lagerliste neu liefert (kein Delta), wird
- * auch hier je Snapshot die volle Liste gespeichert statt einzelne Felder
- * fortzuschreiben.
+ * Fahrzeug-, Feld- und Lagerbestandslisten dieses Zeitpunkts. Da die Bridge
+ * bei jedem Poll die vollstaendige Fahrzeug-/Feld-/Lagerliste neu liefert
+ * (kein Delta), wird auch hier je Snapshot die volle Liste gespeichert statt
+ * einzelne Felder fortzuschreiben.
  */
 @Entity
 @Table(name = "world_snapshot")
@@ -52,6 +52,10 @@ public class WorldSnapshot {
 
     @OneToMany(mappedBy = "worldSnapshot", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderColumn(name = "list_index")
+    private List<VehicleSnapshot> vehicles = new ArrayList<>();
+
+    @OneToMany(mappedBy = "worldSnapshot", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderColumn(name = "list_index")
     private List<StorageSnapshot> storages = new ArrayList<>();
 
     protected WorldSnapshot() {
@@ -68,6 +72,11 @@ public class WorldSnapshot {
     public void addField(FieldSnapshot field) {
         field.setWorldSnapshot(this);
         fields.add(field);
+    }
+
+    public void addVehicle(VehicleSnapshot vehicle) {
+        vehicle.setWorldSnapshot(this);
+        vehicles.add(vehicle);
     }
 
     public void addStorage(StorageSnapshot storage) {
@@ -97,6 +106,10 @@ public class WorldSnapshot {
 
     public List<FieldSnapshot> getFields() {
         return fields;
+    }
+
+    public List<VehicleSnapshot> getVehicles() {
+        return vehicles;
     }
 
     public List<StorageSnapshot> getStorages() {

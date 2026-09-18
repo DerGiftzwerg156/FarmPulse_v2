@@ -90,6 +90,8 @@ class IngestIntegrationTest {
                         + "\"farmId\":1,\"weatherType\":\"SUN\",\"temperature\":11.4}");
         Files.writeString(exchangeDir.resolve("world.json"),
                 "{\"fleetValue\":125000,"
+                        + "\"vehicles\":[{\"name\":\"John Deere 8R 410\",\"horsepowerHp\":410,"
+                        + "\"operatingHours\":128.5,\"conditionPercent\":92,\"sellPrice\":245000}],"
                         + "\"fields\":[{\"fieldId\":1,\"ownerFarmId\":1,\"sizeHa\":4.53,\"price\":32000}],"
                         + "\"storages\":[{\"fillType\":\"WHEAT\",\"amount\":5000,\"capacity\":20000}]}");
         Files.writeString(exchangeDir.resolve("farm.json"),
@@ -108,6 +110,7 @@ class IngestIntegrationTest {
 
         WorldSnapshot worldSnapshot = worldSnapshotRepository.findTopByFarmIdOrderByRecordedAtDesc(1L).orElseThrow();
         assertThat(worldSnapshot.getFleetValue()).isEqualTo(125000);
+        assertThat(worldSnapshot.getVehicles()).hasSize(1);
         assertThat(worldSnapshot.getFields()).hasSize(1);
         assertThat(worldSnapshot.getStorages()).hasSize(1);
 
